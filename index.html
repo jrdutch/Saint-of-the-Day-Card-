@@ -52,7 +52,9 @@
       object-fit: cover; object-position: top center;
       display: block;
       transition: opacity .4s ease;
+      opacity: 0;
     }
+    .card-image.loaded { opacity: 1; }
     .card-image.hidden { display: none; }
     .card-placeholder {
       position: absolute; inset: 0;
@@ -175,7 +177,7 @@ const SAINTS = {
   '06-13': { name:'Saint Anthony of Padua', feast:'Memorial', tags:['Doctor of the Church','Friar','Patron of Lost Things'], bio:'Anthony of Padua (1195–1231) was a Portuguese Franciscan friar renowned for passionate preaching and care for the poor. He is traditionally invoked as patron of lost things and was proclaimed a Doctor of the Church within a year of his death.', quote:'Actions speak louder than words; let your words teach and your actions speak.', quoteSource:'St. Anthony of Padua', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg/400px-Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg', url:'https://en.wikipedia.org/wiki/Anthony_of_Padua' },
   '06-21': { name:'Saint Aloysius Gonzaga', feast:'Memorial', tags:['Jesuit','Patron of Youth'], bio:'Aloysius Gonzaga (1568–1591) renounced his hereditary title to join the Jesuits. He died at 23 caring for plague victims in Rome. He is the patron saint of youth and Catholic students, a model of purity and self-sacrifice.', quote:'I am a piece of crooked iron and I came into religion to be made straight by the hammer of penance.', quoteSource:'St. Aloysius Gonzaga', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Aloysius_Gonzaga.jpg/400px-Aloysius_Gonzaga.jpg', url:'https://en.wikipedia.org/wiki/Aloysius_Gonzaga' },
   '06-24': { name:'Birth of Saint John the Baptist', feast:'Solemnity', tags:['Solemnity','Prophet','Forerunner of Christ'], bio:'John the Baptist was the last great prophet and forerunner of Jesus Christ. Born miraculously to Elizabeth and Zechariah, he baptized Jesus in the Jordan River. He is the only saint besides Mary whose birth — not just death — is celebrated as a Solemnity.', quote:'He must increase, but I must decrease.', quoteSource:'John 3:30', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg/400px-Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg', url:'https://en.wikipedia.org/wiki/John_the_Baptist' },
-  '06-27': { name:'Saint Cyril of Alexandria', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Cyril of Alexandria (376–444 AD) was Archbishop of Alexandria and one of the most important theologians of the early Church. He championed the title "Theotokos" (God-bearer) for the Virgin Mary at the Council of Ephesus in 431, defending the full unity of Christ\'s divine and human natures against the Nestorian heresy.', quote:'We confess our Lord Jesus Christ, the only begotten Son of God, perfect God and perfect man.', quoteSource:'St. Cyril of Alexandria', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Cyril_of_Alexandria.jpg/400px-Cyril_of_Alexandria.jpg', url:'https://en.wikipedia.org/wiki/Cyril_of_Alexandria' },
+  '06-27': { name:'Saint Cyril of Alexandria', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Cyril of Alexandria (376–444 AD) was Archbishop of Alexandria and one of the most important theologians of the early Church. He championed the title "Theotokos" (God-bearer) for the Virgin Mary at the Council of Ephesus in 431, defending the full unity of Christ\'s divine and human natures against the Nestorian heresy.', quote:'We confess our Lord Jesus Christ, the only begotten Son of God, perfect God and perfect man.', quoteSource:'St. Cyril of Alexandria', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/CyrilofAlexandria.jpg/399px-CyrilofAlexandria.jpg', url:'https://en.wikipedia.org/wiki/Cyril_of_Alexandria' },
   '06-28': { name:'Saint Irenaeus', feast:'Memorial', tags:['Bishop','Doctor of the Church','Martyr'], bio:'Irenaeus (c. 130–202 AD) was Bishop of Lyon and an early Church Father who combated Gnostic heresies. His work "Against Heresies" is one of the earliest complete expositions of Christian theology, defending the apostolic tradition.', quote:'The glory of God is man fully alive, and the life of man is the vision of God.', quoteSource:'St. Irenaeus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Irenaeus.jpg/400px-Irenaeus.jpg', url:'https://en.wikipedia.org/wiki/Irenaeus' },
   '06-29': { name:'Saints Peter and Paul', feast:'Solemnity', tags:['Solemnity','Apostles','Martyrs'], bio:'This solemnity celebrates Peter the fisherman, first Pope, and Paul the missionary apostle. Both were martyred in Rome under Emperor Nero around 64–68 AD. Together they represent the twin pillars of the Catholic Church.', quote:'You are the Christ, the Son of the living God.', quoteSource:'Matthew 16:16', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/El_Greco_-_Saints_Peter_and_Paul_-_Google_Art_Project.jpg/400px-El_Greco_-_Saints_Peter_and_Paul_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/Feast_of_Saints_Peter_and_Paul' },
   '07-11': { name:'Saint Benedict', feast:'Feast Day', tags:['Abbot','Patron of Europe','Father of Western Monasticism'], bio:'Benedict of Nursia (480–547 AD) founded Western monasticism. His Rule, emphasizing prayer and work ("Ora et Labora"), shaped European civilization for centuries. He is the patron of Europe and students.', quote:'Prefer nothing whatever to Christ, and may he lead us all together to everlasting life.', quoteSource:'St. Benedict, The Rule', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Fra_Angelico_-_San_Marco_Altarpiece_%28detail%29_-_WGA00585.jpg/400px-Fra_Angelico_-_San_Marco_Altarpiece_%28detail%29_-_WGA00585.jpg', url:'https://en.wikipedia.org/wiki/Benedict_of_Nursia' },
@@ -240,8 +242,17 @@ function showSaint(s) {
 
   if (s.img) {
     img.alt = s.name;
-    img.onload  = () => { img.classList.remove('hidden'); ph.style.display = 'none'; };
-    img.onerror = () => { img.classList.add('hidden'); };
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => { img.classList.add('loaded'); ph.style.display = 'none'; };
+    img.onerror = () => {
+      // Try without crossOrigin restriction on second attempt
+      if (img.crossOrigin) {
+        img.crossOrigin = null;
+        img.src = s.img;
+      } else {
+        img.classList.add('hidden');
+      }
+    };
     img.src = s.img;
   }
 
