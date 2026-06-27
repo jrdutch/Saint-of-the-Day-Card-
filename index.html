@@ -4,12 +4,314 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Saint of the Day</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: radial-gradient(ellipse at top, #e8dcc8 0%, #c9b99a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #fffdf8;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.14), 0 0 0 1px rgba(160,120,60,.15);
+    }
+
+    /* Header */
+    .card-header {
+      background: linear-gradient(135deg, #6b3a2a 0%, #8b4e32 60%, #a0622a 100%);
+      padding: 1rem 1.25rem .85rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .card-header-icon { font-size: 1.1rem; color: #f5d78e; flex-shrink: 0; }
+    .card-label {
+      font-size: .65rem;
+      font-family: Arial, sans-serif;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #f5d78e;
+      opacity: .85;
+    }
+    .card-date { font-size: .85rem; color: #fff; margin-top: .1rem; font-family: Arial, sans-serif; }
+
+    /* Image */
+    .card-image-wrap { position: relative; height: 220px; background: #e8dcc8; overflow: hidden; }
+    .card-image {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top center;
+      display: block;
+      transition: opacity .4s ease;
+    }
+    .card-image.hidden { display: none; }
+    .card-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: .5rem; color: #9a8060;
+    }
+    .card-placeholder .icon { font-size: 3.5rem; line-height: 1; }
+    .card-placeholder .label { font-size: .75rem; font-family: Arial, sans-serif; opacity: .7; }
+    .card-image-wrap::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: linear-gradient(to top, #fffdf8, transparent);
+      pointer-events: none;
+    }
+
+    /* Body */
+    .card-body { padding: 1rem 1.25rem 1.25rem; }
+    .card-name { font-size: 1.4rem; color: #3a1f0e; line-height: 1.2; margin-bottom: .25rem; }
+    .card-feast {
+      font-size: .75rem; font-family: Arial, sans-serif;
+      color: #8b4e32; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: .85rem;
+    }
+    .card-divider { border: none; border-top: 1px solid #e0d0b8; margin-bottom: .85rem; }
+    .card-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .85rem; }
+    .card-tag {
+      font-size: .68rem; font-family: Arial, sans-serif;
+      background: #f0e6d0; color: #6b3a2a;
+      border: 1px solid #d4b896; border-radius: 20px;
+      padding: .2rem .55rem; letter-spacing: .04em;
+    }
+    .card-bio { font-size: .88rem; color: #4a3020; line-height: 1.65; margin-bottom: 1rem; }
+
+    /* Quote */
+    .card-quote {
+      background: #f5ede0; border-left: 3px solid #8b4e32;
+      border-radius: 0 8px 8px 0; padding: .65rem .9rem;
+      margin-bottom: 1rem; display: none;
+    }
+    .card-quote.show { display: block; }
+    .card-quote p { font-size: .82rem; color: #5a3520; font-style: italic; line-height: 1.55; }
+    .card-quote cite { display: block; margin-top: .35rem; font-size: .72rem; font-family: Arial, sans-serif; color: #8b6040; font-style: normal; }
+
+    /* Footer */
+    .card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .7rem 1.25rem .9rem;
+      border-top: 1px solid #e0d0b8; background: #fdf8f0;
+    }
+    .card-source { font-size: .72rem; font-family: Arial, sans-serif; color: #9a7850; }
+    .card-link {
+      font-size: .75rem; font-family: Arial, sans-serif;
+      color: #8b4e32; text-decoration: none;
+      border: 1px solid #c08040; border-radius: 20px;
+      padding: .28rem .75rem; transition: background .2s, color .2s;
+    }
+    .card-link:hover { background: #8b4e32; color: #fff; }
+
+    /* Loading shimmer */
+    .shimmer {
+      background: linear-gradient(90deg, #e8dcc8 25%, #f5ede0 50%, #e8dcc8 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px; color: transparent !important;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
 </head>
 <body>
-  <div class="page-bg">
-    <saint-of-day-card></saint-of-day-card>
+
+<div class="card" id="card">
+  <div class="card-header">
+    <span class="card-header-icon">✝</span>
+    <div>
+      <div class="card-label">Catholic Saint of the Day</div>
+      <div class="card-date" id="date"></div>
+    </div>
   </div>
-  <script src="saint-card.js"></script>
+
+  <div class="card-image-wrap">
+    <div class="card-placeholder" id="placeholder">
+      <span class="icon">✝</span>
+      <span class="label" id="placeholder-label">Loading…</span>
+    </div>
+    <img class="card-image hidden" id="image" alt="" />
+  </div>
+
+  <div class="card-body">
+    <h2 class="card-name shimmer" id="name" style="height:1.6rem;width:70%">&nbsp;</h2>
+    <p class="card-feast shimmer" id="feast" style="height:.9rem;width:45%;margin-bottom:.85rem">&nbsp;</p>
+    <hr class="card-divider" />
+    <div class="card-tags" id="tags"></div>
+    <p class="card-bio shimmer" id="bio" style="height:5rem;width:100%">&nbsp;</p>
+    <blockquote class="card-quote" id="quote">
+      <p id="quote-text"></p>
+      <cite id="quote-source"></cite>
+    </blockquote>
+  </div>
+
+  <div class="card-footer">
+    <span class="card-source" id="source-label">Loading…</span>
+    <a class="card-link" id="link" href="https://www.catholic.org/saints/" target="_blank" rel="noopener">Learn More →</a>
+  </div>
+</div>
+
+<script>
+// ── Embedded fallback data ───────────────────────────────────────────────────
+const SAINTS = {
+  '01-01': { name:'Mary, Mother of God', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'January 1st honors Mary as the Mother of God (Theotokos), proclaimed at the Council of Ephesus in 431 AD. This is the oldest Marian feast in the Western Church, celebrating her unique role as the mother of Jesus Christ, the Son of God.', quote:'My soul magnifies the Lord, and my spirit rejoices in God my Savior.', quoteSource:'Luke 1:46–47', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Sassoferrato_-_Jungfrau_im_Gebet.jpg/400px-Sassoferrato_-_Jungfrau_im_Gebet.jpg', url:'https://en.wikipedia.org/wiki/Mary,_mother_of_Jesus' },
+  '01-17': { name:'Saint Anthony the Great', feast:'Memorial', tags:['Desert Father','Monk','Abbot'], bio:'Anthony (251–356 AD) was an Egyptian Christian monk known as the "Father of Monasticism." He withdrew into the desert to pray in solitude and is said to have lived to 105 years old. He inspired countless monastic communities across the world.', quote:'Humility is the foundation of all the other virtues.', quoteSource:'St. Anthony the Great', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Hieronymus_Bosch_-_The_Temptation_of_St._Anthony_-_Google_Art_Project.jpg/400px-Hieronymus_Bosch_-_The_Temptation_of_St._Anthony_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/Anthony_the_Great' },
+  '01-24': { name:'Saint Francis de Sales', feast:'Memorial', tags:['Bishop','Doctor of the Church','Writer'], bio:'Francis de Sales (1567–1622) was the Bishop of Geneva and a prolific spiritual writer. His "Introduction to the Devout Life" remains a beloved guide to holiness for lay people. He is the patron saint of writers and journalists.', quote:'Nothing is so strong as gentleness, nothing so gentle as real strength.', quoteSource:'St. Francis de Sales', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Francisco_de_Sales.jpg/400px-Francisco_de_Sales.jpg', url:'https://en.wikipedia.org/wiki/Francis_de_Sales' },
+  '01-28': { name:'Saint Thomas Aquinas', feast:'Memorial', tags:['Doctor of the Church','Friar','Theologian'], bio:'Thomas Aquinas (1225–1274) was an Italian Dominican friar whose "Summa Theologiae" synthesized Christian theology with Aristotelian philosophy. He is the patron saint of students and universities and one of the greatest intellects in Church history.', quote:'The things that we love tell us what we are.', quoteSource:'St. Thomas Aquinas', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Gentile_da_Fabriano_-_St_Thomas_Aquinas_-_WGA8490.jpg/400px-Gentile_da_Fabriano_-_St_Thomas_Aquinas_-_WGA8490.jpg', url:'https://en.wikipedia.org/wiki/Thomas_Aquinas' },
+  '02-14': { name:'Saints Cyril and Methodius', feast:'Feast Day', tags:['Apostles to the Slavs','Missionaries','Doctors of the Church'], bio:'Cyril (826–869) and Methodius (815–885) were Greek brothers who evangelized the Slavic peoples. Cyril created the Glagolitic alphabet so scripture could be translated into the Slavic language. They are co-patrons of Europe alongside Saint Benedict.', quote:'Among peoples there is only one God, one faith, one baptism.', quoteSource:'St. Cyril', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Cyril_and_Methodius2.jpg/400px-Cyril_and_Methodius2.jpg', url:'https://en.wikipedia.org/wiki/Saints_Cyril_and_Methodius' },
+  '03-17': { name:'Saint Patrick', feast:'Feast Day', tags:['Bishop','Patron of Ireland','Missionary'], bio:'Patrick (385–461 AD) was kidnapped into Irish slavery at age 16. After escaping, he felt a divine calling to return as a missionary. He converted thousands, ordained priests, and established the Church throughout Ireland. He is the primary patron saint of Ireland.', quote:'Christ with me, Christ before me, Christ behind me, Christ in me.', quoteSource:"St. Patrick's Breastplate", img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Saint_Patrick_-_Caravaggio_%28Mattia_Preti%29.jpg/400px-Saint_Patrick_-_Caravaggio_%28Mattia_Preti%29.jpg', url:'https://en.wikipedia.org/wiki/Saint_Patrick' },
+  '03-19': { name:'Saint Joseph', feast:'Solemnity', tags:['Solemnity','Patron of the Universal Church','Worker'], bio:'Joseph was the husband of the Virgin Mary and foster father of Jesus Christ. A carpenter from Nazareth, he protected the Holy Family during the flight to Egypt and raised Jesus with great love. He is the patron of the Universal Church, workers, and fathers.', quote:'Joseph did as the angel of the Lord commanded him.', quoteSource:'Matthew 1:24', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Guido_Reni_-_St_Joseph_with_the_Infant_Jesus_-_WGA19304.jpg/400px-Guido_Reni_-_St_Joseph_with_the_Infant_Jesus_-_WGA19304.jpg', url:'https://en.wikipedia.org/wiki/Saint_Joseph' },
+  '03-25': { name:'Annunciation of the Lord', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Incarnation'], bio:"The Annunciation celebrates the angel Gabriel's announcement to Mary that she would conceive the Son of God. Mary's \"fiat\" — \"Let it be done to me\" — marks the moment of the Incarnation, nine months before Christmas.", quote:'Behold, I am the handmaid of the Lord. Let it be done to me according to your word.', quoteSource:'Luke 1:38', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/FRA_ANGELICO_-_La_Anunciaci%C3%B3n_%28Museo_del_Prado%2C_1425-28%29.jpg/400px-FRA_ANGELICO_-_La_Anunciaci%C3%B3n_%28Museo_del_Prado%2C_1425-28%29.jpg', url:'https://en.wikipedia.org/wiki/Annunciation' },
+  '04-23': { name:'Saint George', feast:'Optional Memorial', tags:['Martyr','Patron of England','Soldier'], bio:'George (died c. 303 AD) was a Roman soldier who refused to renounce his Christian faith under Emperor Diocletian and was martyred. The famous legend of slaying a dragon symbolizes his defeat of evil. He is patron of England, Georgia, Portugal, and many other nations.', quote:'I am a Christian, and I will not deny my faith.', quoteSource:'St. George (traditional)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Raphael_-_Saint_George_and_the_Dragon_-_Google_Art_Project.jpg/400px-Raphael_-_Saint_George_and_the_Dragon_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/Saint_George' },
+  '04-29': { name:'Saint Catherine of Siena', feast:'Feast Day', tags:['Doctor of the Church','Dominican','Mystic'], bio:'Catherine of Siena (1347–1380) was a Dominican mystic, Doctor of the Church, and co-patron of Europe. Her letters urging Pope Gregory XI to return from Avignon to Rome helped end the Avignon papacy. She cared for the poor and received the stigmata.', quote:'Be who God meant you to be and you will set the world on fire.', quoteSource:'St. Catherine of Siena', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Giovanni_Battista_Tiepolo_-_The_Virgin_Appearing_to_St_Catherine_of_Siena_-_WGA22337.jpg/400px-Giovanni_Battista_Tiepolo_-_The_Virgin_Appearing_to_St_Catherine_of_Siena_-_WGA22337.jpg', url:'https://en.wikipedia.org/wiki/Catherine_of_Siena' },
+  '06-13': { name:'Saint Anthony of Padua', feast:'Memorial', tags:['Doctor of the Church','Friar','Patron of Lost Things'], bio:'Anthony of Padua (1195–1231) was a Portuguese Franciscan friar renowned for passionate preaching and care for the poor. He is traditionally invoked as patron of lost things and was proclaimed a Doctor of the Church within a year of his death.', quote:'Actions speak louder than words; let your words teach and your actions speak.', quoteSource:'St. Anthony of Padua', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg/400px-Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg', url:'https://en.wikipedia.org/wiki/Anthony_of_Padua' },
+  '06-21': { name:'Saint Aloysius Gonzaga', feast:'Memorial', tags:['Jesuit','Patron of Youth'], bio:'Aloysius Gonzaga (1568–1591) renounced his hereditary title to join the Jesuits. He died at 23 caring for plague victims in Rome. He is the patron saint of youth and Catholic students, a model of purity and self-sacrifice.', quote:'I am a piece of crooked iron and I came into religion to be made straight by the hammer of penance.', quoteSource:'St. Aloysius Gonzaga', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Aloysius_Gonzaga.jpg/400px-Aloysius_Gonzaga.jpg', url:'https://en.wikipedia.org/wiki/Aloysius_Gonzaga' },
+  '06-24': { name:'Birth of Saint John the Baptist', feast:'Solemnity', tags:['Solemnity','Prophet','Forerunner of Christ'], bio:'John the Baptist was the last great prophet and forerunner of Jesus Christ. Born miraculously to Elizabeth and Zechariah, he baptized Jesus in the Jordan River. He is the only saint besides Mary whose birth — not just death — is celebrated as a Solemnity.', quote:'He must increase, but I must decrease.', quoteSource:'John 3:30', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg/400px-Leonardo_da_Vinci_-_Saint_John_the_Baptist_C2RMF_retouched.jpg', url:'https://en.wikipedia.org/wiki/John_the_Baptist' },
+  '06-27': { name:'Saint Cyril of Alexandria', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Cyril of Alexandria (376–444 AD) was Archbishop of Alexandria and one of the most important theologians of the early Church. He championed the title "Theotokos" (God-bearer) for the Virgin Mary at the Council of Ephesus in 431, defending the full unity of Christ\'s divine and human natures against the Nestorian heresy.', quote:'We confess our Lord Jesus Christ, the only begotten Son of God, perfect God and perfect man.', quoteSource:'St. Cyril of Alexandria', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Cyril_of_Alexandria.jpg/400px-Cyril_of_Alexandria.jpg', url:'https://en.wikipedia.org/wiki/Cyril_of_Alexandria' },
+  '06-28': { name:'Saint Irenaeus', feast:'Memorial', tags:['Bishop','Doctor of the Church','Martyr'], bio:'Irenaeus (c. 130–202 AD) was Bishop of Lyon and an early Church Father who combated Gnostic heresies. His work "Against Heresies" is one of the earliest complete expositions of Christian theology, defending the apostolic tradition.', quote:'The glory of God is man fully alive, and the life of man is the vision of God.', quoteSource:'St. Irenaeus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Irenaeus.jpg/400px-Irenaeus.jpg', url:'https://en.wikipedia.org/wiki/Irenaeus' },
+  '06-29': { name:'Saints Peter and Paul', feast:'Solemnity', tags:['Solemnity','Apostles','Martyrs'], bio:'This solemnity celebrates Peter the fisherman, first Pope, and Paul the missionary apostle. Both were martyred in Rome under Emperor Nero around 64–68 AD. Together they represent the twin pillars of the Catholic Church.', quote:'You are the Christ, the Son of the living God.', quoteSource:'Matthew 16:16', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/El_Greco_-_Saints_Peter_and_Paul_-_Google_Art_Project.jpg/400px-El_Greco_-_Saints_Peter_and_Paul_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/Feast_of_Saints_Peter_and_Paul' },
+  '07-11': { name:'Saint Benedict', feast:'Feast Day', tags:['Abbot','Patron of Europe','Father of Western Monasticism'], bio:'Benedict of Nursia (480–547 AD) founded Western monasticism. His Rule, emphasizing prayer and work ("Ora et Labora"), shaped European civilization for centuries. He is the patron of Europe and students.', quote:'Prefer nothing whatever to Christ, and may he lead us all together to everlasting life.', quoteSource:'St. Benedict, The Rule', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Fra_Angelico_-_San_Marco_Altarpiece_%28detail%29_-_WGA00585.jpg/400px-Fra_Angelico_-_San_Marco_Altarpiece_%28detail%29_-_WGA00585.jpg', url:'https://en.wikipedia.org/wiki/Benedict_of_Nursia' },
+  '07-22': { name:'Saint Mary Magdalene', feast:'Feast Day', tags:['Apostle to the Apostles','Disciple','Witness of the Resurrection'], bio:'Mary Magdalene was the first witness of the Resurrection and the first to proclaim it, earning the title "Apostle to the Apostles." She remained at the Cross when most of the apostles had fled. Pope Francis elevated her feast to the rank of Feast Day in 2016.', quote:'I have seen the Lord!', quoteSource:'John 20:18', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Georges_de_La_Tour_-_The_Penitent_Magdalene_-_WGA12340.jpg/400px-Georges_de_La_Tour_-_The_Penitent_Magdalene_-_WGA12340.jpg', url:'https://en.wikipedia.org/wiki/Mary_Magdalene' },
+  '07-25': { name:'Saint James the Apostle', feast:'Feast Day', tags:['Apostle','Martyr','Patron of Spain'], bio:'James, son of Zebedee, was one of the Twelve Apostles and the first to be martyred, executed by Herod Agrippa around 44 AD. His tomb at Santiago de Compostela in Spain became one of the greatest pilgrimage sites of the medieval world.', quote:'Lord, we will drink the cup you drink.', quoteSource:'Mark 10:39', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Rembrandt_Harmensz._van_Rijn_-_The_Apostle_James_-_Google_Art_Project.jpg/400px-Rembrandt_Harmensz._van_Rijn_-_The_Apostle_James_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/James,_son_of_Zebedee' },
+  '08-10': { name:'Saint Lawrence', feast:'Feast Day', tags:['Deacon','Martyr','Patron of the Poor'], bio:'Lawrence (225–258 AD) was one of the seven deacons of Rome. When ordered to hand over Church treasures, he gathered the poor and sick, saying "These are the treasures of the Church." He was martyred by being roasted on a gridiron under Emperor Valerian.', quote:'The Church is truly rich, far richer than your emperor.', quoteSource:'St. Lawrence (traditional)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Fra_Angelico_-_Ordination_of_Saint_Lawrence_and_Saint_Lawrence_Giving_Alms_-_WGA00649.jpg/400px-Fra_Angelico_-_Ordination_of_Saint_Lawrence_and_Saint_Lawrence_Giving_Alms_-_WGA00649.jpg', url:'https://en.wikipedia.org/wiki/Saint_Lawrence' },
+  '08-15': { name:'Assumption of the Blessed Virgin Mary', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'The Assumption celebrates Mary being taken body and soul into heavenly glory at the end of her earthly life. Defined as dogma by Pope Pius XII in 1950, this is one of the most ancient Marian feasts and a Holy Day of Obligation for Catholics worldwide.', quote:'For he who is mighty has done great things for me, and holy is his name.', quoteSource:'Luke 1:49', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Titian_-_The_Assumption_of_the_Virgin_-_WGA22833.jpg/400px-Titian_-_The_Assumption_of_the_Virgin_-_WGA22833.jpg', url:'https://en.wikipedia.org/wiki/Assumption_of_Mary' },
+  '08-28': { name:'Saint Augustine of Hippo', feast:'Memorial', tags:['Bishop','Doctor of the Church','Theologian'], bio:'Augustine (354–430 AD) is one of the greatest theologians in history. After years of searching, he converted to Christianity under Saint Ambrose. His "Confessions" and "City of God" remain masterpieces of world literature and Christian thought.', quote:'Our heart is restless until it finds its rest in Thee.', quoteSource:'St. Augustine, Confessions', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Sandro_Botticelli_-_St_Augustine_in_his_cell.jpg/400px-Sandro_Botticelli_-_St_Augustine_in_his_cell.jpg', url:'https://en.wikipedia.org/wiki/Augustine_of_Hippo' },
+  '09-08': { name:'Nativity of the Blessed Virgin Mary', feast:'Feast Day', tags:['Feast Day','Blessed Virgin Mary','Marian'], bio:"This feast celebrates the birth of the Virgin Mary to Joachim and Anne. Observed nine months after her Immaculate Conception (December 8), it has been celebrated since the 7th century. Mary's birth is the dawn before the Sunrise of salvation.", quote:'Blessed are you among women, and blessed is the fruit of your womb.', quoteSource:'Luke 1:42', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Master_of_the_Life_of_the_Virgin_-_The_Birth_of_the_Virgin_-_WGA14400.jpg/400px-Master_of_the_Life_of_the_Virgin_-_The_Birth_of_the_Virgin_-_WGA14400.jpg', url:'https://en.wikipedia.org/wiki/Nativity_of_Mary' },
+  '09-29': { name:'Sts. Michael, Gabriel & Raphael', feast:'Feast Day', tags:['Archangels','Feast Day'], bio:'Michaelmas honors the three archangels named in Scripture: Michael the warrior who leads God\'s armies, Gabriel the messenger who announced the Incarnation to Mary, and Raphael the healer who guided Tobias. Together they represent God\'s protection, communication, and healing.', quote:'Behold, I send an angel before you to guard you on the way.', quoteSource:'Exodus 23:20', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Guido_Reni_-_Archangel_Michael_-_WGA19344.jpg/400px-Guido_Reni_-_Archangel_Michael_-_WGA19344.jpg', url:'https://en.wikipedia.org/wiki/Archangel' },
+  '10-01': { name:'Saint Thérèse of Lisieux', feast:'Memorial', tags:['Doctor of the Church','Carmelite','Patron of Missions'], bio:'Thérèse Martin (1873–1897) entered the Carmelite convent at 15 and died of tuberculosis at 24. Her "Little Way" of doing small things with great love became one of the most influential spiritual paths in modern Catholicism. She is a Doctor of the Church.', quote:'Miss no single opportunity of making some small sacrifice, here by a smiling look, there by a kindly word.', quoteSource:'St. Thérèse of Lisieux', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Ste_Th%C3%A9r%C3%A8se_de_Lisieux.jpg/400px-Ste_Th%C3%A9r%C3%A8se_de_Lisieux.jpg', url:'https://en.wikipedia.org/wiki/Th%C3%A9r%C3%A8se_of_Lisieux' },
+  '10-04': { name:'Saint Francis of Assisi', feast:'Memorial', tags:['Friar','Patron of Animals and Ecology'], bio:'Francis of Assisi (1181–1226) renounced his wealthy family to live the Gospel in radical poverty. He founded the Franciscan Order, received the stigmata, and composed the "Canticle of the Sun." He is patron of animals, ecology, and Italy.', quote:'Lord, make me an instrument of your peace. Where there is hatred, let me sow love.', quoteSource:'Peace Prayer of St. Francis', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Giovanni_Bellini%2C_Saint_Francis_in_the_Desert.jpg/400px-Giovanni_Bellini%2C_Saint_Francis_in_the_Desert.jpg', url:'https://en.wikipedia.org/wiki/Francis_of_Assisi' },
+  '10-07': { name:'Our Lady of the Rosary', feast:'Memorial', tags:['Memorial','Blessed Virgin Mary','Rosary'], bio:'Established by Pope Pius V after the Christian victory at Lepanto (October 7, 1571), this feast honors Mary under the title of Our Lady of the Rosary. Meditating on the mysteries of Christ\'s life through repeated prayers is one of the most beloved Catholic devotions.', quote:'The Rosary is the most excellent form of prayer and the most efficacious means of attaining eternal life.', quoteSource:'Pope Leo XIII', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Our_Lady_of_the_Rosary.jpg/400px-Our_Lady_of_the_Rosary.jpg', url:'https://en.wikipedia.org/wiki/Our_Lady_of_the_Rosary' },
+  '10-15': { name:'Saint Teresa of Ávila', feast:'Memorial', tags:['Doctor of the Church','Carmelite','Mystic'], bio:'Teresa of Ávila (1515–1582) was a Spanish Carmelite nun, mystic, and reformer who founded the Discalced Carmelites. Her works "The Interior Castle" and "The Way of Perfection" are masterpieces of mystical theology. She was the first woman proclaimed Doctor of the Church.', quote:'The important thing is not to think much but to love much.', quoteSource:'St. Teresa of Ávila', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/SantaTeresaJesus.jpg/400px-SantaTeresaJesus.jpg', url:'https://en.wikipedia.org/wiki/Teresa_of_%C3%81vila' },
+  '11-01': { name:"All Saints' Day", feast:'Solemnity', tags:['Solemnity','Holy Day of Obligation','All Saints'], bio:"All Saints' Day honors every saint — known and unknown — who have attained heavenly glory. Established in the 9th century, this solemnity affirms the Church's belief in the Communion of Saints and the universal call to holiness. It is a Holy Day of Obligation.", quote:'Blessed are the pure in heart, for they shall see God.', quoteSource:'Matthew 5:8', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg/400px-Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg', url:"https://en.wikipedia.org/wiki/All_Saints'_Day" },
+  '11-02': { name:"All Souls' Day", feast:'Commemoration', tags:['Commemoration','Prayer for the Dead'], bio:"All Souls' Day is the Church's commemoration of all the faithful departed, especially those in purgatory. The Church encourages prayer, Masses, and almsgiving for the souls of the dead. Established by St. Odilo of Cluny in 998.", quote:'It is a holy and wholesome thought to pray for the dead, that they may be loosed from their sins.', quoteSource:'2 Maccabees 12:46', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Victoria%26Albert_AllSoulsDay.jpg/400px-Victoria%26Albert_AllSoulsDay.jpg', url:"https://en.wikipedia.org/wiki/All_Souls'_Day" },
+  '11-30': { name:'Saint Andrew', feast:'Feast Day', tags:['Apostle','Martyr','Patron of Scotland and Greece'], bio:"Andrew was Simon Peter's brother and among the first disciples called by Jesus. A fisherman, he brought Peter to Jesus. He was martyred on an X-shaped cross in Patras, Greece — now known as the Cross of Saint Andrew. He is patron of Scotland and Greece.", quote:'We have found the Messiah.', quoteSource:'John 1:41', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/El_Greco_-_The_Apostle_Andrew_-_WGA10502.jpg/400px-El_Greco_-_The_Apostle_Andrew_-_WGA10502.jpg', url:'https://en.wikipedia.org/wiki/Andrew_the_Apostle' },
+  '12-03': { name:'Saint Francis Xavier', feast:'Memorial', tags:['Jesuit','Missionary','Patron of Missions'], bio:'Francis Xavier (1506–1552) was a Spanish Jesuit co-founder of the Society of Jesus. He brought Christianity to India, Southeast Asia, and Japan, baptizing tens of thousands. He is the patron saint of missionaries and foreign missions.', quote:'It is not the actual physical exertion that counts, but the spirit of faith with which it is undertaken.', quoteSource:'St. Francis Xavier', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Frans_Pourbus_the_Younger_-_Saint_Francis_Xavier_-_WGA18285.jpg/400px-Frans_Pourbus_the_Younger_-_Saint_Francis_Xavier_-_WGA18285.jpg', url:'https://en.wikipedia.org/wiki/Francis_Xavier' },
+  '12-08': { name:'Immaculate Conception', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'The Immaculate Conception holds that Mary was preserved from original sin from the very first moment of her conception. Defined as dogma by Pope Pius IX in 1854, this is the patronal feast of the United States and a Holy Day of Obligation.', quote:'Hail, full of grace, the Lord is with you.', quoteSource:'Luke 1:28', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Murillo-Inmaculada_Concepci%C3%B3n-Museo_del_Prado.jpg/400px-Murillo-Inmaculada_Concepci%C3%B3n-Museo_del_Prado.jpg', url:'https://en.wikipedia.org/wiki/Immaculate_Conception' },
+  '12-12': { name:'Our Lady of Guadalupe', feast:'Feast Day', tags:['Feast Day','Blessed Virgin Mary','Patron of the Americas'], bio:'In 1531 the Virgin Mary appeared to Saint Juan Diego on Tepeyac Hill near Mexico City and left her image miraculously on his cloak. She is the Patron of the Americas and is venerated at the Basilica of Guadalupe, the most visited Catholic shrine in the world.', quote:'Am I not here, I who am your Mother?', quoteSource:'Our Lady of Guadalupe to Juan Diego', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Virgen_de_guadalupe1.jpg/400px-Virgen_de_guadalupe1.jpg', url:'https://en.wikipedia.org/wiki/Our_Lady_of_Guadalupe' },
+  '12-25': { name:'Nativity of Our Lord Jesus Christ', feast:'Solemnity – Christmas', tags:['Solemnity','Holy Day of Obligation','Christmas'], bio:'Christmas commemorates the birth of Jesus Christ in Bethlehem of Judea, the fulfillment of centuries of prophecy and the pivotal event of all human history. The eternal Son of God became human through the Virgin Mary — the Incarnation at the heart of the Christian faith.', quote:'For unto you is born this day in the city of David a Savior, who is Christ the Lord.', quoteSource:'Luke 2:11', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Geertgen_tot_Sint_Jans_-_Nativity_at_Night_-_National_Gallery_London.jpg/400px-Geertgen_tot_Sint_Jans_-_Nativity_at_Night_-_National_Gallery_London.jpg', url:'https://en.wikipedia.org/wiki/Christmas' },
+  '12-26': { name:'Saint Stephen', feast:'Feast Day', tags:['Deacon','First Martyr','Protomartyr'], bio:'Stephen was the first Christian martyr, stoned to death in Jerusalem for proclaiming his faith. As he died he prayed for the forgiveness of his killers — echoing the words of Christ on the Cross. The young Saul of Tarsus (later St. Paul) witnessed the stoning.', quote:'Lord Jesus, receive my spirit. Lord, do not hold this sin against them.', quoteSource:'Acts 7:59–60', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rembrandt_-_The_Stoning_of_Saint_Stephen_-_Google_Art_Project.jpg/400px-Rembrandt_-_The_Stoning_of_Saint_Stephen_-_Google_Art_Project.jpg', url:'https://en.wikipedia.org/wiki/Saint_Stephen' },
+  '12-27': { name:'Saint John the Apostle', feast:'Feast Day', tags:['Apostle','Evangelist','Beloved Disciple'], bio:"John was Jesus' Beloved Disciple and the only apostle to remain at the foot of the Cross. He wrote the Fourth Gospel, three Epistles, and the Book of Revelation. He cared for the Virgin Mary after the Crucifixion and is the only apostle believed to have died of natural causes.", quote:'God so loved the world that he gave his only Son, so that everyone who believes in him might not perish but might have eternal life.', quoteSource:'John 3:16', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Donatello_-_St._John_the_Evangelist_-_Museo_dell%27Opera_del_Duomo_Florence.jpg/400px-Donatello_-_St._John_the_Evangelist_-_Museo_dell%27Opera_del_Duomo_Florence.jpg', url:'https://en.wikipedia.org/wiki/John_the_Apostle' },
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function today() {
+  const d = new Date();
+  return String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function stripShimmer(id) {
+  document.getElementById(id).classList.remove('shimmer');
+  document.getElementById(id).removeAttribute('style');
+}
+
+function showSaint(s) {
+  // Remove loading shimmer
+  ['name','feast','bio'].forEach(stripShimmer);
+
+  document.getElementById('name').textContent  = s.name;
+  document.getElementById('feast').textContent = s.feast;
+  document.getElementById('bio').textContent   = s.bio;
+
+  // Tags
+  const tagsEl = document.getElementById('tags');
+  tagsEl.innerHTML = (s.tags||[]).map(t =>
+    `<span class="card-tag">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>`
+  ).join('');
+
+  // Quote
+  if (s.quote) {
+    document.getElementById('quote-text').textContent   = `"${s.quote}"`;
+    document.getElementById('quote-source').textContent = `— ${s.quoteSource||''}`;
+    document.getElementById('quote').classList.add('show');
+  }
+
+  // Image
+  const img = document.getElementById('image');
+  const ph  = document.getElementById('placeholder');
+  document.getElementById('placeholder-label').textContent = s.name;
+
+  if (s.img) {
+    img.alt = s.name;
+    img.onload  = () => { img.classList.remove('hidden'); ph.style.display = 'none'; };
+    img.onerror = () => { img.classList.add('hidden'); };
+    img.src = s.img;
+  }
+
+  // Footer
+  document.getElementById('source-label').textContent = s.source || 'Roman Catholic Calendar';
+  document.getElementById('link').href = s.url || 'https://www.catholic.org/saints/';
+}
+
+// ── RSS parser ────────────────────────────────────────────────────────────────
+function parseRSS(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  const item = doc.querySelector('item');
+  if (!item) return null;
+
+  const g = tag => item.querySelector(tag)?.textContent?.trim() || '';
+
+  const title = g('title');
+  const link  = g('link') || 'https://www.catholic.org/saints/saint.php';
+  const rawDesc = g('description');
+
+  // Plain text bio from HTML description
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rawDesc;
+  const bio = tmp.textContent.replace(/\s+/g,' ').trim();
+
+  // Image: try enclosure, then media:content, then first <img> in HTML
+  let img = item.querySelector('enclosure')?.getAttribute('url') || '';
+  if (!img) img = (item.querySelector('media\\:content') || item.querySelector('media:content'))?.getAttribute('url') || '';
+  if (!img) { const m = rawDesc.match(/<img[^>]+src=["']([^"']+)["']/i); if (m) img = m[1]; }
+
+  if (!title) return null;
+  return { name:title, feast:'Feast Day', tags:['Catholic','Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', img, url:link, source:'catholic.org' };
+}
+
+// ── Main load ─────────────────────────────────────────────────────────────────
+(async () => {
+  // Date display
+  document.getElementById('date').textContent = new Date().toLocaleDateString('en-US', {
+    weekday:'long', month:'long', day:'numeric', year:'numeric'
+  });
+
+  let saint = null;
+
+  // 1. Try catholic.org RSS
+  try {
+    const r = await fetch('https://www.catholic.org/xml/rss_sofd.php',
+                          { signal: AbortSignal.timeout(7000) });
+    if (r.ok) saint = parseRSS(await r.text());
+  } catch(e) {
+    console.info('Saint card: RSS unavailable, using embedded data.', e.message);
+  }
+
+  // 2. Fallback to embedded dataset
+  if (!saint) {
+    const key = today();
+    saint = SAINTS[key] || {
+      name: 'Saints of the Roman Calendar',
+      feast: 'Feast Day',
+      tags: ['Catholic','Holy Men and Women'],
+      bio: 'The Church honors saints every day of the year — holy men and women who bore witness to Christ through heroic virtue. Visit catholic.org to discover today\'s saint.',
+      quote: 'To be a saint is not a luxury but a necessity.',
+      quoteSource: 'Pope St. John Paul II',
+      img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg/400px-Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg',
+      url: 'https://www.catholic.org/saints/',
+      source: 'Roman Catholic Calendar',
+    };
+  }
+
+  showSaint(saint);
+})();
+</script>
 </body>
 </html>
