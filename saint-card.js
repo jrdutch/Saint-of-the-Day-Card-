@@ -1,114 +1,157 @@
 /**
  * Saint of the Day Card
  *
- * Data sources (tried in order):
- *  1. calapi-inadiutorium.cz – free liturgical calendar API
- *  2. Curated local fallback keyed by MM-DD
+ * Data pipeline:
+ *  1. Calapi Inadiutorium  →  today's saint name + feast rank
+ *  2. Wikipedia REST API   →  biography summary + thumbnail image
+ *  3. Curated overrides    →  hand-picked quotes; also full fallback for
+ *                             major feasts where Wikipedia title differs
  */
 
-const FALLBACK_SAINTS = {
+// Hand-curated quotes and Wikipedia slug overrides, keyed by MM-DD.
+// The live APIs handle bio + image for every date; this just enriches
+// major feasts with a quote and ensures the right Wikipedia article.
+const CURATED = {
   '01-01': {
-    name: 'Mary, Mother of God',
-    feast: 'Solemnity of Mary',
-    tags: ['Solemnity', 'Blessed Virgin Mary'],
-    bio: 'January 1st honors Mary as the Mother of God (Theotokos), proclaimed at the Council of Ephesus in 431 AD. This is the oldest Marian feast in the Western Church, celebrating her unique role in salvation history as the mother of Jesus Christ.',
     quote: 'My soul magnifies the Lord, and my spirit rejoices in God my Savior.',
     quoteSource: 'Luke 1:46–47',
     wikiSlug: 'Mary,_mother_of_Jesus',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Sassoferrato_-_Jungfrau_im_Gebet.jpg/400px-Sassoferrato_-_Jungfrau_im_Gebet.jpg',
   },
   '01-17': {
-    name: 'Saint Anthony the Great',
-    feast: 'Feast Day',
-    tags: ['Desert Father', 'Monk', 'Egypt'],
-    bio: 'Anthony (251–356 AD) was an Egyptian Christian monk who withdrew into the desert, becoming one of the first Christian ascetics. Known as the "Father of Monasticism," he is said to have lived to 105 years old, spending decades in solitary prayer and battle against spiritual temptations.',
-    quote: 'I saw the snares that the enemy spreads out over the world, and I said groaning, "What can get through from such snares?" Then I heard a voice saying to me, "Humility."',
+    quote: 'Humility is the foundation of all the other virtues.',
     quoteSource: 'St. Anthony the Great',
     wikiSlug: 'Anthony_the_Great',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Velázquez_-_San_Antonio_Abad_y_San_Pablo_Ermitaño_%281635%2C_Prado%29.jpg/400px-Velázquez_-_San_Antonio_Abad_y_San_Pablo_Ermitaño_%281635%2C_Prado%29.jpg',
   },
   '02-14': {
-    name: 'Saints Cyril and Methodius',
-    feast: 'Feast Day',
-    tags: ['Apostles to the Slavs', 'Missionaries', 'Doctors'],
-    bio: 'Cyril (826–869) and Methodius (815–885) were Greek brothers and missionaries who evangelized the Slavic peoples. Cyril created the Glagolitic alphabet to translate scripture into the Slavic vernacular. They are co-patrons of Europe and Doctors of the Church.',
     quote: 'Among peoples there is only one God, one faith, one baptism.',
     quoteSource: 'St. Cyril',
     wikiSlug: 'Saints_Cyril_and_Methodius',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Cyril_and_Methodius2.jpg/400px-Cyril_and_Methodius2.jpg',
   },
   '03-17': {
-    name: 'Saint Patrick',
-    feast: 'Feast Day',
-    tags: ['Bishop', 'Patron of Ireland', 'Missionary'],
-    bio: 'Patrick (385–461 AD) was a Romano-British Christian missionary and bishop who is regarded as the primary patron saint of Ireland. Kidnapped into slavery at 16, his faith deepened during captivity. After escaping, he returned to Ireland as a missionary, converting thousands and establishing churches across the island.',
-    quote: 'Christ with me, Christ before me, Christ behind me, Christ in me, Christ beneath me, Christ above me.',
-    quoteSource: 'St. Patrick\'s Breastplate',
+    quote: 'Christ with me, Christ before me, Christ behind me, Christ in me.',
+    quoteSource: "St. Patrick's Breastplate",
     wikiSlug: 'Saint_Patrick',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Muiredach%27s_High_Cross_%28south_face%29_-_geograph.org.uk_-_1434766.jpg/400px-Muiredach%27s_High_Cross_%28south_face%29_-_geograph.org.uk_-_1434766.jpg',
+  },
+  '03-19': {
+    quote: 'He who trusts in God lacks nothing.',
+    quoteSource: 'St. Joseph (traditional)',
+    wikiSlug: 'Saint_Joseph',
   },
   '04-23': {
-    name: 'Saint George',
-    feast: 'Feast Day',
-    tags: ['Martyr', 'Patron of England', 'Soldier'],
-    bio: 'George (died c. 303 AD) was a Roman soldier and officer who became one of the most venerated martyrs in Christianity. According to tradition, he refused to renounce his Christian faith under Emperor Diocletian\'s persecutions and was executed for it. He is patron of England, Georgia, and many other nations.',
     quote: 'I am a Christian, and I will not deny my faith.',
     quoteSource: 'St. George (traditional)',
     wikiSlug: 'Saint_George',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Raphael_-_Saint_George_and_the_Dragon_-_Google_Art_Project.jpg/400px-Raphael_-_Saint_George_and_the_Dragon_-_Google_Art_Project.jpg',
+  },
+  '05-03': {
+    quote: 'Lord, we do not know where you are going; how can we know the way?',
+    quoteSource: 'John 14:5',
+    wikiSlug: 'Philip_the_Apostle',
   },
   '06-13': {
-    name: 'Saint Anthony of Padua',
-    feast: 'Feast Day',
-    tags: ['Doctor of the Church', 'Friar', 'Preacher'],
-    bio: 'Anthony (1195–1231) was a Portuguese Catholic priest and friar of the Franciscan Order. Renowned for his passionate preaching and expertise in scripture, he is traditionally invoked as the patron saint of lost things and the poor. He was proclaimed a Doctor of the Church by Pope Pius XII.',
     quote: 'Actions speak louder than words; let your words teach and your actions speak.',
     quoteSource: 'St. Anthony of Padua',
     wikiSlug: 'Anthony_of_Padua',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg/400px-Sant%27Antonio_di_Padova_con_il_Bambino%2C_by_Bartolom%C3%A9_Esteban_Murillo.jpg',
+  },
+  '06-24': {
+    quote: 'He must increase, but I must decrease.',
+    quoteSource: 'John 3:30',
+    wikiSlug: 'John_the_Baptist',
+  },
+  '06-27': {
+    quote: 'The heretic who denies the Virgin to be Mother of God is not truly Christian.',
+    quoteSource: 'St. Cyril of Alexandria',
+    wikiSlug: 'Cyril_of_Alexandria',
+  },
+  '06-29': {
+    quote: 'You are the Christ, the Son of the living God.',
+    quoteSource: 'Matthew 16:16',
+    wikiSlug: 'Saint_Peter',
+  },
+  '07-22': {
+    quote: 'I have seen the Lord.',
+    quoteSource: 'John 20:18',
+    wikiSlug: 'Mary_Magdalene',
+  },
+  '07-25': {
+    quote: 'The sons of Zebedee asked: Grant us to sit at your right and left in your glory.',
+    quoteSource: 'Mark 10:37',
+    wikiSlug: 'James,_son_of_Zebedee',
+  },
+  '08-10': {
+    quote: 'Unless a grain of wheat falls into the earth and dies, it remains alone.',
+    quoteSource: 'John 12:24',
+    wikiSlug: 'Saint_Lawrence',
   },
   '08-15': {
-    name: 'Assumption of the Blessed Virgin Mary',
-    feast: 'Solemnity',
-    tags: ['Solemnity', 'Blessed Virgin Mary', 'Holy Day of Obligation'],
-    bio: 'The Assumption celebrates the dogma that the Virgin Mary, at the end of her earthly life, was taken body and soul into heavenly glory. Defined as dogma by Pope Pius XII in 1950, this is one of the most ancient Marian celebrations, observed since at least the 4th century.',
     quote: 'For he who is mighty has done great things for me, and holy is his name.',
     quoteSource: 'Luke 1:49',
     wikiSlug: 'Assumption_of_Mary',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Titian_-_The_Assumption_of_the_Virgin_-_WGA22833.jpg/400px-Titian_-_The_Assumption_of_the_Virgin_-_WGA22833.jpg',
+  },
+  '08-28': {
+    quote: 'Our heart is restless until it finds its rest in Thee.',
+    quoteSource: 'St. Augustine, Confessions',
+    wikiSlug: 'Augustine_of_Hippo',
+  },
+  '09-29': {
+    quote: 'Who is like God?',
+    quoteSource: 'Meaning of Michael',
+    wikiSlug: 'Archangel',
+  },
+  '10-04': {
+    quote: 'Start by doing what is necessary, then what is possible, and suddenly you are doing the impossible.',
+    quoteSource: 'St. Francis of Assisi',
+    wikiSlug: 'Francis_of_Assisi',
+  },
+  '10-15': {
+    quote: 'The important thing is not to think much but to love much.',
+    quoteSource: 'St. Teresa of Ávila',
+    wikiSlug: 'Teresa_of_Ávila',
   },
   '11-01': {
-    name: 'All Saints\' Day',
-    feast: 'Solemnity',
-    tags: ['Solemnity', 'Holy Day of Obligation', 'All Saints'],
-    bio: 'All Saints\' Day honors all saints of the Church, both known and unknown. Established to celebrate the innumerable martyrs and saints whose individual feast days cannot all be commemorated separately, this solemnity affirms the Church\'s belief in the Communion of Saints and the hope of resurrection.',
     quote: 'Blessed are the pure in heart, for they shall see God.',
     quoteSource: 'Matthew 5:8',
-    wikiSlug: 'All_Saints%27_Day',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg/400px-Fra_Angelico_-_The_Virgin_Mary_with_the_Apostles_and_Other_Saints_%28detail%29_-_WGA00698.jpg',
+    wikiSlug: "All_Saints'_Day",
+  },
+  '11-04': {
+    quote: 'Nothing is so strong as gentleness, nothing so gentle as real strength.',
+    quoteSource: 'St. Francis de Sales',
+    wikiSlug: 'Francis_de_Sales',
+  },
+  '12-03': {
+    quote: 'It is not the actual physical exertion that counts towards a man\'s progress, nor the nature of the task, but the spirit of faith with which it is undertaken.',
+    quoteSource: 'St. Francis Xavier',
+    wikiSlug: 'Francis_Xavier',
   },
   '12-25': {
-    name: 'Nativity of Our Lord Jesus Christ',
-    feast: 'Solemnity – Christmas',
-    tags: ['Solemnity', 'Holy Day of Obligation', 'Christmas'],
-    bio: 'Christmas commemorates the birth of Jesus Christ in Bethlehem, celebrated since the 4th century on December 25th. This solemnity marks the Incarnation — God becoming human — and is one of the most important celebrations in the liturgical calendar, observed with Midnight Mass and joyful worship.',
     quote: 'For unto you is born this day in the city of David a Savior, who is Christ the Lord.',
     quoteSource: 'Luke 2:11',
     wikiSlug: 'Christmas',
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Caravaggio_%281571-1610%29_-_The_Nativity_with_St._Francis_and_St._Lawrence_%281609%29.jpg/400px-Caravaggio_%281571-1610%29_-_The_Nativity_with_St._Francis_and_St._Lawrence_%281609%29.jpg',
   },
 };
 
-// Generic fallback for any date not in our curated list
-const DEFAULT_SAINT = {
-  name: 'Saint of the Day',
-  feast: 'Feast Day',
-  tags: ['Catholic', 'Martyr'],
-  bio: 'The Catholic Church celebrates the feast of a saint each day of the year, honoring the faithful who have lived lives of heroic virtue. Saints serve as intercessors and models of Christian living.',
-  quote: 'To be a saint is not a luxury but a necessity.',
-  quoteSource: 'Pope St. John Paul II',
-  wikiSlug: 'Calendar_of_saints_(Catholic_Church)',
-  imageUrl: null,
+// Wikipedia article title overrides: maps Calapi saint titles that don't
+// match a Wikipedia article directly to the correct Wikipedia slug.
+const WIKI_TITLE_MAP = {
+  'Saint Cyril of Alexandria': 'Cyril_of_Alexandria',
+  'Cyril of Alexandria': 'Cyril_of_Alexandria',
+  'Saint Augustine of Hippo': 'Augustine_of_Hippo',
+  'Augustine of Hippo': 'Augustine_of_Hippo',
+  'Saint Peter': 'Saint_Peter',
+  'Saint Paul': 'Paul_the_Apostle',
+  'Saint John the Baptist': 'John_the_Baptist',
+  'Birth of John the Baptist': 'John_the_Baptist',
+  'Nativity of John the Baptist': 'John_the_Baptist',
+  'Peter and Paul, Apostles': 'Peter_and_Paul_the_Apostles',
+  'Saints Peter and Paul': 'Peter_and_Paul_the_Apostles',
+  'Mary Magdalene': 'Mary_Magdalene',
+  'James, Apostle': 'James,_son_of_Zebedee',
+  'Lawrence': 'Saint_Lawrence',
+  'Assumption of the Blessed Virgin Mary': 'Assumption_of_Mary',
+  'All Saints': "All_Saints'_Day",
+  'Immaculate Conception': 'Immaculate_Conception',
+  'Francis of Assisi': 'Francis_of_Assisi',
+  'Teresa of Jesus': 'Teresa_of_Ávila',
+  'Michael, Gabriel and Raphael, Archangels': 'Archangel',
 };
 
 class SaintOfDayCard extends HTMLElement {
@@ -158,12 +201,10 @@ class SaintOfDayCard extends HTMLElement {
       </div>
     `;
 
-    // Set date
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', {
+    this.querySelector('#sc-date').textContent = now.toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     });
-    this.querySelector('#sc-date').textContent = dateStr;
   }
 
   async loadSaint() {
@@ -171,36 +212,67 @@ class SaintOfDayCard extends HTMLElement {
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     const key = `${mm}-${dd}`;
+    const curated = CURATED[key] || {};
 
-    let saint = FALLBACK_SAINTS[key] || DEFAULT_SAINT;
+    let saintName = null;
+    let feastLabel = 'Feast Day';
+    let rank = null;
 
-    // Try to enrich name/feast from the Calapi API (no CORS issues on modern browsers)
+    // Step 1 – get today's saint name from Calapi
     try {
       const year = now.getFullYear();
       const resp = await fetch(
         `https://calapi.inadiutorium.cz/api/v0/en/calendars/general-en/${year}/${mm}/${dd}`,
-        { signal: AbortSignal.timeout(5000) }
+        { signal: AbortSignal.timeout(6000) }
       );
       if (resp.ok) {
         const data = await resp.json();
         const celebrations = data?.celebrations;
         if (Array.isArray(celebrations) && celebrations.length > 0) {
           const primary = celebrations[0];
-          // Only override if we don't have a hand-curated entry
-          if (!FALLBACK_SAINTS[key]) {
-            saint = {
-              ...DEFAULT_SAINT,
-              name: primary.title || DEFAULT_SAINT.name,
-              feast: this.rankLabel(primary.rank),
-              tags: [this.rankLabel(primary.rank), 'Catholic'].filter(Boolean),
-              wikiSlug: encodeURIComponent((primary.title || '').replace(/ /g, '_')),
+          saintName = primary.title || null;
+          rank = primary.rank || null;
+          feastLabel = this.rankLabel(rank);
+        }
+      }
+    } catch (_) { /* will fall back */ }
+
+    // Step 2 – look up Wikipedia for bio + image
+    let wikiData = null;
+    const wikiSlug = curated.wikiSlug
+      || (saintName && (WIKI_TITLE_MAP[saintName] || saintName.replace(/ /g, '_')));
+
+    if (wikiSlug) {
+      try {
+        const wResp = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiSlug)}`,
+          { signal: AbortSignal.timeout(6000) }
+        );
+        if (wResp.ok) {
+          const w = await wResp.json();
+          if (w.type !== 'disambiguation' && w.extract) {
+            wikiData = {
+              bio: w.extract,
+              imageUrl: w.thumbnail?.source || w.originalimage?.source || null,
+              wikiUrl: w.content_urls?.desktop?.page || null,
             };
           }
         }
-      }
-    } catch (_) {
-      // Silently fall back to curated data
+      } catch (_) { /* bio will be omitted */ }
     }
+
+    // Step 3 – assemble final saint object
+    const saint = {
+      name: saintName || 'Saint of the Day',
+      feast: feastLabel,
+      tags: this.buildTags(rank, saintName),
+      bio: wikiData?.bio || 'Biography unavailable. Visit the link below to learn more about this saint.',
+      quote: curated.quote || null,
+      quoteSource: curated.quoteSource || null,
+      imageUrl: wikiData?.imageUrl || null,
+      learnMoreUrl: wikiData?.wikiUrl
+        || (wikiSlug ? `https://en.wikipedia.org/wiki/${wikiSlug}` : 'https://www.catholic.org/saints/'),
+    };
 
     this.populate(saint);
   }
@@ -213,9 +285,25 @@ class SaintOfDayCard extends HTMLElement {
       optional_memorial: 'Optional Memorial',
       commemoration: 'Commemoration',
       sunday: 'Sunday',
-      feria: 'Feria',
+      feria: 'Weekday',
     };
-    return map[rank] || 'Feast Day';
+    return (rank && map[rank]) || 'Feast Day';
+  }
+
+  buildTags(rank, name) {
+    const tags = [];
+    if (rank) tags.push(this.rankLabel(rank));
+    if (name) {
+      if (/virgin|mary|our lady/i.test(name)) tags.push('Blessed Virgin Mary');
+      if (/martyr/i.test(name)) tags.push('Martyr');
+      if (/doctor/i.test(name)) tags.push('Doctor of the Church');
+      if (/apostle|peter|paul|james|john|andrew|philip|thomas|matthew|bartholomew|thaddeus|simon/i.test(name)) tags.push('Apostle');
+      if (/bishop/i.test(name)) tags.push('Bishop');
+      if (/pope/i.test(name)) tags.push('Pope');
+      if (/archangel|michael|gabriel|raphael/i.test(name)) tags.push('Archangel');
+    }
+    if (tags.length === 0) tags.push('Catholic');
+    return [...new Set(tags)];
   }
 
   populate(saint) {
@@ -225,22 +313,19 @@ class SaintOfDayCard extends HTMLElement {
     this.querySelector('#sc-name').textContent = saint.name;
     this.querySelector('#sc-feast').textContent = saint.feast;
 
-    // Tags
     const tagsEl = this.querySelector('#sc-tags');
     tagsEl.innerHTML = (saint.tags || [])
       .map(t => `<span class="saint-card__tag">${this.esc(t)}</span>`)
       .join('');
 
-    this.querySelector('#sc-bio').textContent = saint.bio || '';
+    this.querySelector('#sc-bio').textContent = saint.bio;
 
-    // Quote
     if (saint.quote) {
       this.querySelector('#sc-quote-text').textContent = `"${saint.quote}"`;
       this.querySelector('#sc-quote-source').textContent = `— ${saint.quoteSource || ''}`;
       this.querySelector('#sc-quote').classList.add('visible');
     }
 
-    // Image
     if (saint.imageUrl) {
       const img = this.querySelector('#sc-img');
       const placeholder = this.querySelector('#sc-placeholder');
@@ -259,13 +344,7 @@ class SaintOfDayCard extends HTMLElement {
       placeholder.querySelector('p').textContent = saint.name;
     }
 
-    // Learn More link
-    const link = this.querySelector('#sc-link');
-    if (saint.wikiSlug) {
-      link.href = `https://en.wikipedia.org/wiki/${saint.wikiSlug}`;
-    } else {
-      link.href = 'https://www.catholic.org/saints/';
-    }
+    this.querySelector('#sc-link').href = saint.learnMoreUrl;
   }
 
   esc(str) {
