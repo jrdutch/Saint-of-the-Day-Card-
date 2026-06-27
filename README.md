@@ -23,7 +23,50 @@ The card shows:
 
 ---
 
-## How to Add to Home Assistant
+## Installation
+
+There are two ways to install this card: via **HACS** (recommended, easier) or **manually**.
+
+---
+
+## Option A — Install via HACS (recommended)
+
+[HACS](https://hacs.xyz/) is the Home Assistant Community Store. Once installed, it makes adding and updating community cards much easier.
+
+### Step 1 — Install HACS (if you haven't already)
+
+Follow the official guide at [hacs.xyz/docs/use/](https://hacs.xyz/docs/use/) to install HACS on your Home Assistant instance.
+
+### Step 2 — Add this repository as a custom repository
+
+1. In Home Assistant, open **HACS** from the sidebar
+2. Click **Frontend**
+3. Click the **three-dot menu** (⋮) in the top-right corner
+4. Click **Custom repositories**
+5. In the **Repository** field, enter:
+   ```
+   https://github.com/jrdutch/saint-of-the-day-card-
+   ```
+6. Set **Category** to **Lovelace**
+7. Click **Add**
+
+### Step 3 — Install the card
+
+1. Search for **Saint of the Day** in the HACS Frontend section
+2. Click it, then click **Download**
+3. Restart Home Assistant when prompted
+
+### Step 4 — Add the card to your dashboard
+
+1. Go to your Home Assistant **Overview** dashboard
+2. Click the **three-dot menu** (⋮) → **Edit dashboard**
+3. Click **+ Add Card**
+4. Search for **Saint of the Day** — it should appear in the card picker
+5. Click it and then **Save**
+
+---
+
+## Option B — Manual Installation
 
 ### What you need
 - A running Home Assistant instance
@@ -31,7 +74,7 @@ The card shows:
 
 ---
 
-### Step 1 — Install the File Editor add-on (if you don't have it)
+### Step 1 (Manual) — Install the File Editor add-on (if you don't have it)
 
 1. In Home Assistant, go to **Settings → Add-ons**
 2. Click **Add-on Store** (bottom right)
