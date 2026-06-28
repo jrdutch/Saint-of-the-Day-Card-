@@ -218,15 +218,17 @@ function getEaster(year) {
 
 // hF=headerFrom, hT=headerTo, ac=accent, tBg=tagBg, tBo=tagBorder, tTx=tagText,
 // qBg=quoteBg, qBo=quoteBorder, qTx=quoteText, div=divider, fBg=footerBg
+// tBg/tBo/tTx/qBg/qTx use rgba so they work on transparent card backgrounds.
+// tTx/qTx fall back to HA's primary-text-color so they're readable in any theme.
 const THEMES = {
-  ordinary:  { hF:'#1a5c2e', hT:'#0d3d1e', ac:'#1a6b35', tBg:'#d8eedc', tBo:'#7ab88a', tTx:'#14542a', qBg:'#eef5ef', qBo:'#2a8a4a', qTx:'#1a4a28', div:'#b8d8c0', fBg:'rgba(0,0,0,.03)' },
-  advent:    { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'#ede4f5', tBo:'#c8a8e8', tTx:'#4a1a6b', qBg:'#f3eef8', qBo:'#7a3aab', qTx:'#3a1060', div:'#c8a8e8', fBg:'rgba(0,0,0,.03)' },
-  christmas: { hF:'#7a5a00', hT:'#402e00', ac:'#a07820', tBg:'#f5ecc0', tBo:'#d4b840', tTx:'#6b4a00', qBg:'#fdf8e8', qBo:'#a07820', qTx:'#5a3a00', div:'#d4c898', fBg:'rgba(0,0,0,.03)' },
-  lent:      { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'#ede4f5', tBo:'#c8a8e8', tTx:'#4a1a6b', qBg:'#f3eef8', qBo:'#7a3aab', qTx:'#3a1060', div:'#c8a8e8', fBg:'rgba(0,0,0,.03)' },
-  easter:    { hF:'#7a6000', hT:'#402e00', ac:'#b09020', tBg:'#f5ecc0', tBo:'#d4b840', tTx:'#5a3a00', qBg:'#fdf8e0', qBo:'#b09020', qTx:'#4a3000', div:'#d4c898', fBg:'rgba(0,0,0,.03)' },
-  martyr:    { hF:'#8b1a1a', hT:'#4a0808', ac:'#c04040', tBg:'#f5d8d8', tBo:'#e8a8a8', tTx:'#8b1a1a', qBg:'#fdf0f0', qBo:'#c04040', qTx:'#6b1a1a', div:'#e8c0c0', fBg:'rgba(0,0,0,.03)' },
-  virgin:    { hF:'#4a4838', hT:'#2a2820', ac:'#7a7060', tBg:'#f5f3ee', tBo:'#d8d4c8', tTx:'#4a4840', qBg:'#fdfcf8', qBo:'#a8a098', qTx:'#3a3830', div:'#dcdad5', fBg:'rgba(0,0,0,.03)' },
-  marian:    { hF:'#1a2a8b', hT:'#0d1660', ac:'#3050c0', tBg:'#d8ddf0', tBo:'#a8b0e0', tTx:'#1a2a8b', qBg:'#eef0f8', qBo:'#3050c0', qTx:'#0d1860', div:'#a8b0e0', fBg:'rgba(0,0,0,.03)' },
+  ordinary:  { hF:'#1a5c2e', hT:'#0d3d1e', ac:'#1a6b35', tBg:'rgba(26,107,53,.14)', tBo:'rgba(26,107,53,.35)', qBg:'rgba(26,107,53,.08)', qBo:'#2a8a4a', div:'rgba(26,107,53,.2)' },
+  advent:    { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'rgba(122,58,171,.14)', tBo:'rgba(122,58,171,.35)', qBg:'rgba(122,58,171,.08)', qBo:'#7a3aab', div:'rgba(122,58,171,.2)' },
+  christmas: { hF:'#7a5a00', hT:'#402e00', ac:'#a07820', tBg:'rgba(160,120,32,.14)', tBo:'rgba(160,120,32,.35)', qBg:'rgba(160,120,32,.08)', qBo:'#a07820', div:'rgba(160,120,32,.2)' },
+  lent:      { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'rgba(122,58,171,.14)', tBo:'rgba(122,58,171,.35)', qBg:'rgba(122,58,171,.08)', qBo:'#7a3aab', div:'rgba(122,58,171,.2)' },
+  easter:    { hF:'#7a6000', hT:'#402e00', ac:'#b09020', tBg:'rgba(176,144,32,.14)', tBo:'rgba(176,144,32,.35)', qBg:'rgba(176,144,32,.08)', qBo:'#b09020', div:'rgba(176,144,32,.2)' },
+  martyr:    { hF:'#8b1a1a', hT:'#4a0808', ac:'#c04040', tBg:'rgba(192,64,64,.14)', tBo:'rgba(192,64,64,.35)', qBg:'rgba(192,64,64,.08)', qBo:'#c04040', div:'rgba(192,64,64,.2)' },
+  virgin:    { hF:'#4a4838', hT:'#2a2820', ac:'#7a7060', tBg:'rgba(122,112,96,.14)', tBo:'rgba(122,112,96,.35)', qBg:'rgba(122,112,96,.08)', qBo:'#a8a098', div:'rgba(122,112,96,.2)' },
+  marian:    { hF:'#1a2a8b', hT:'#0d1660', ac:'#3050c0', tBg:'rgba(48,80,192,.14)', tBo:'rgba(48,80,192,.35)', qBg:'rgba(48,80,192,.08)', qBo:'#3050c0', div:'rgba(48,80,192,.2)' },
 };
 
 function getLiturgicalTheme(saint) {
@@ -310,15 +312,17 @@ const CARD_CSS = `
   :host {
     display: block;
     --lit-hF: #6b3a2a; --lit-hT: #a0622a; --lit-ac: #8b4e32;
-    --lit-tBg: #f0e6d0; --lit-tBo: #d4b896; --lit-tTx: #6b3a2a;
-    --lit-qBg: #f5ede0; --lit-qBo: #8b4e32; --lit-qTx: #5a3520;
-    --lit-div: #e0d0b8; --lit-fBg: rgba(0,0,0,.03);
+    --lit-tBg: rgba(139,78,50,.12); --lit-tBo: rgba(139,78,50,.3); --lit-tTx: var(--primary-text-color, #3a1f0e);
+    --lit-qBg: rgba(139,78,50,.07); --lit-qBo: #8b4e32; --lit-qTx: var(--primary-text-color, #5a3520);
+    --lit-div: var(--divider-color, rgba(0,0,0,.12)); --lit-fBg: transparent;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   .card {
     font-family: Georgia, 'Times New Roman', serif;
-    background: var(--card-background-color, #fffdf8);
-    border-radius: 12px; overflow: hidden;
+    background: var(--ha-card-background, var(--card-background-color, rgba(255,255,255,0.8)));
+    border-radius: var(--ha-card-border-radius, 12px);
+    box-shadow: var(--ha-card-box-shadow, none);
+    overflow: hidden;
   }
   .card-header {
     background: linear-gradient(135deg, var(--lit-hF) 0%, var(--lit-hT) 100%);
@@ -334,11 +338,11 @@ const CARD_CSS = `
   .card-feast { font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
   .card-divider { border: none; border-top: 1px solid var(--lit-div); margin-bottom: .75rem; }
   .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem; }
-  .card-tag { font-size: .65rem; font-family: Arial, sans-serif; background: var(--lit-tBg); color: var(--lit-tTx); border: 1px solid var(--lit-tBo); border-radius: 20px; padding: .18rem .5rem; }
+  .card-tag { font-size: .65rem; font-family: Arial, sans-serif; background: var(--lit-tBg); color: var(--primary-text-color, #3a1f0e); border: 1px solid var(--lit-tBo); border-radius: 20px; padding: .18rem .5rem; }
   .card-bio { font-size: .85rem; color: var(--secondary-text-color, #4a3020); line-height: 1.6; margin-bottom: .9rem; }
   .card-quote { background: var(--lit-qBg); border-left: 3px solid var(--lit-qBo); border-radius: 0 8px 8px 0; padding: .6rem .85rem; margin-bottom: .9rem; display: none; }
   .card-quote.show { display: block; }
-  .card-quote p { font-size: .8rem; color: var(--lit-qTx); font-style: italic; line-height: 1.5; }
+  .card-quote p { font-size: .8rem; color: var(--primary-text-color, #5a3520); font-style: italic; line-height: 1.5; opacity: .9; }
   .card-quote cite { display: block; margin-top: .3rem; font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); font-style: normal; opacity: .8; }
   .card-footer { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.1rem .8rem; border-top: 1px solid var(--lit-div); background: var(--lit-fBg); }
   .card-source { font-size: .68rem; font-family: Arial, sans-serif; color: var(--secondary-text-color, #9a7850); opacity: .8; }
@@ -458,18 +462,15 @@ class SaintOfDayCard extends HTMLElement {
   }
 
   _applyTheme(t) {
-    const host = this;
-    host.style.setProperty('--lit-hF', t.hF);
-    host.style.setProperty('--lit-hT', t.hT);
-    host.style.setProperty('--lit-ac', t.ac);
-    host.style.setProperty('--lit-tBg', t.tBg);
-    host.style.setProperty('--lit-tBo', t.tBo);
-    host.style.setProperty('--lit-tTx', t.tTx);
-    host.style.setProperty('--lit-qBg', t.qBg);
-    host.style.setProperty('--lit-qBo', t.qBo);
-    host.style.setProperty('--lit-qTx', t.qTx);
-    host.style.setProperty('--lit-div', t.div);
-    host.style.setProperty('--lit-fBg', t.fBg);
+    const h = this;
+    h.style.setProperty('--lit-hF', t.hF);
+    h.style.setProperty('--lit-hT', t.hT);
+    h.style.setProperty('--lit-ac', t.ac);
+    h.style.setProperty('--lit-tBg', t.tBg);
+    h.style.setProperty('--lit-tBo', t.tBo);
+    h.style.setProperty('--lit-qBg', t.qBg);
+    h.style.setProperty('--lit-qBo', t.qBo);
+    h.style.setProperty('--lit-div', t.div);
   }
 
   _render(s) {
