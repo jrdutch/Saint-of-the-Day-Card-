@@ -317,12 +317,12 @@ const CARD_CSS = `
     --lit-div: var(--divider-color, rgba(0,0,0,.12)); --lit-fBg: transparent;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  .card {
+  /* ha-card is the element HA themes target — it gets background, border-radius,
+     box-shadow, and backdrop-filter (frosted glass) from the active theme. */
+  ha-card {
     font-family: Georgia, 'Times New Roman', serif;
-    background: var(--ha-card-background, var(--card-background-color, rgba(255,255,255,0.8)));
-    border-radius: var(--ha-card-border-radius, 12px);
-    box-shadow: var(--ha-card-box-shadow, none);
     overflow: hidden;
+    display: block;
   }
   .card-header {
     background: linear-gradient(135deg, var(--lit-hF) 0%, var(--lit-hT) 100%);
@@ -354,7 +354,7 @@ const CARD_CSS = `
 
 // ── Card HTML template ────────────────────────────────────────────────────────
 const CARD_HTML = `
-  <div class="card">
+  <ha-card>
     <div class="card-header">
       <span class="card-header-icon">✝</span>
       <div>
@@ -378,7 +378,7 @@ const CARD_HTML = `
       <span class="card-source" id="source-label">Roman Catholic Calendar</span>
       <a class="card-link" id="link" href="https://www.catholic.org/saints/" target="_blank" rel="noopener">Learn More →</a>
     </div>
-  </div>
+  </ha-card>
 `;
 
 // ── RSS parser ────────────────────────────────────────────────────────────────
