@@ -47,7 +47,7 @@ Follow the official guide at [hacs.xyz/docs/use/](https://hacs.xyz/docs/use/) to
    ```
    https://github.com/jrdutch/saint-of-the-day-card-
    ```
-6. Set **Category** to **Lovelace**
+6. Set **Category** to **Dashboard**
 7. Click **Add**
 
 ### Step 3 — Install the card
