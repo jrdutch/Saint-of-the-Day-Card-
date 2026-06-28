@@ -204,6 +204,66 @@ function getIllustration(saint) {
   return ILLUSTRATIONS.default(saint.name);
 }
 
+// ── Easter & liturgical season ────────────────────────────────────────────────
+function getEaster(year) {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mo = Math.floor((h + l - 7 * m + 114) / 31);
+  const dy = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, mo - 1, dy);
+}
+
+// hF=headerFrom, hT=headerTo, ac=accent, tBg=tagBg, tBo=tagBorder, tTx=tagText,
+// qBg=quoteBg, qBo=quoteBorder, qTx=quoteText, div=divider, fBg=footerBg
+const THEMES = {
+  ordinary:  { hF:'#1a5c2e', hT:'#0d3d1e', ac:'#1a6b35', tBg:'#d8eedc', tBo:'#7ab88a', tTx:'#14542a', qBg:'#eef5ef', qBo:'#2a8a4a', qTx:'#1a4a28', div:'#b8d8c0', fBg:'rgba(0,0,0,.03)' },
+  advent:    { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'#ede4f5', tBo:'#c8a8e8', tTx:'#4a1a6b', qBg:'#f3eef8', qBo:'#7a3aab', qTx:'#3a1060', div:'#c8a8e8', fBg:'rgba(0,0,0,.03)' },
+  christmas: { hF:'#7a5a00', hT:'#402e00', ac:'#a07820', tBg:'#f5ecc0', tBo:'#d4b840', tTx:'#6b4a00', qBg:'#fdf8e8', qBo:'#a07820', qTx:'#5a3a00', div:'#d4c898', fBg:'rgba(0,0,0,.03)' },
+  lent:      { hF:'#4a1a6b', hT:'#280a40', ac:'#7a3aab', tBg:'#ede4f5', tBo:'#c8a8e8', tTx:'#4a1a6b', qBg:'#f3eef8', qBo:'#7a3aab', qTx:'#3a1060', div:'#c8a8e8', fBg:'rgba(0,0,0,.03)' },
+  easter:    { hF:'#7a6000', hT:'#402e00', ac:'#b09020', tBg:'#f5ecc0', tBo:'#d4b840', tTx:'#5a3a00', qBg:'#fdf8e0', qBo:'#b09020', qTx:'#4a3000', div:'#d4c898', fBg:'rgba(0,0,0,.03)' },
+  martyr:    { hF:'#8b1a1a', hT:'#4a0808', ac:'#c04040', tBg:'#f5d8d8', tBo:'#e8a8a8', tTx:'#8b1a1a', qBg:'#fdf0f0', qBo:'#c04040', qTx:'#6b1a1a', div:'#e8c0c0', fBg:'rgba(0,0,0,.03)' },
+  virgin:    { hF:'#4a4838', hT:'#2a2820', ac:'#7a7060', tBg:'#f5f3ee', tBo:'#d8d4c8', tTx:'#4a4840', qBg:'#fdfcf8', qBo:'#a8a098', qTx:'#3a3830', div:'#dcdad5', fBg:'rgba(0,0,0,.03)' },
+  marian:    { hF:'#1a2a8b', hT:'#0d1660', ac:'#3050c0', tBg:'#d8ddf0', tBo:'#a8b0e0', tTx:'#1a2a8b', qBg:'#eef0f8', qBo:'#3050c0', qTx:'#0d1860', div:'#a8b0e0', fBg:'rgba(0,0,0,.03)' },
+};
+
+function getLiturgicalTheme(saint) {
+  const tags = (saint.tags || []).join(' ').toLowerCase();
+  const name = (saint.name || '').toLowerCase();
+
+  // Feast-specific overrides take priority over season
+  if (/\bmartyr\b/.test(tags)) return THEMES.martyr;
+  if (/\bvirgin\b/.test(tags)) return THEMES.virgin;
+  if (/blessed virgin|our lady|marian/.test(tags) ||
+      /our lady|immaculate|assumption|annunciation|nativity of.*mary|visitation/.test(name))
+    return THEMES.marian;
+
+  // Calculate season
+  const now = new Date();
+  const yr = now.getFullYear();
+  const today = new Date(yr, now.getMonth(), now.getDate());
+  const easter = getEaster(yr);
+  const eD = new Date(easter.getFullYear(), easter.getMonth(), easter.getDate());
+  const ashWed = new Date(eD); ashWed.setDate(eD.getDate() - 46);
+  const pentecost = new Date(eD); pentecost.setDate(eD.getDate() + 49);
+
+  if (today >= ashWed && today < eD) return THEMES.lent;
+  if (today >= eD && today <= pentecost) return THEMES.easter;
+
+  const dec25 = new Date(yr, 11, 25);
+  const jan6dow = new Date(yr, 0, 6).getDay();
+  const baptism = new Date(yr, 0, jan6dow === 0 ? 13 : 6 + (7 - jan6dow));
+  if (today >= dec25 || (today.getMonth() < 2 && today <= baptism)) return THEMES.christmas;
+
+  const dec25dow = dec25.getDay();
+  const adventStart = new Date(yr, 11, 25 - (dec25dow === 0 ? 28 : dec25dow + 21));
+  if (today >= adventStart) return THEMES.advent;
+
+  return THEMES.ordinary;
+}
+
 // ── Embedded saint data ───────────────────────────────────────────────────────
 const SAINTS = {
   '01-01': { name:'Mary, Mother of God', feast:'Solemnity', tags:['Solemnity','Blessed Virgin Mary','Holy Day of Obligation'], bio:'January 1st honors Mary as the Mother of God (Theotokos), proclaimed at the Council of Ephesus in 431 AD. This is the oldest Marian feast in the Western Church, celebrating her unique role as the mother of Jesus Christ.', quote:'My soul magnifies the Lord, and my spirit rejoices in God my Savior.', quoteSource:'Luke 1:46–47', url:'https://en.wikipedia.org/wiki/Mary,_mother_of_Jesus' },
@@ -247,31 +307,44 @@ const SAINTS = {
 
 // ── Card styles ───────────────────────────────────────────────────────────────
 const CARD_CSS = `
-  :host { display: block; }
+  :host {
+    display: block;
+    --lit-hF: #6b3a2a; --lit-hT: #a0622a; --lit-ac: #8b4e32;
+    --lit-tBg: #f0e6d0; --lit-tBo: #d4b896; --lit-tTx: #6b3a2a;
+    --lit-qBg: #f5ede0; --lit-qBo: #8b4e32; --lit-qTx: #5a3520;
+    --lit-div: #e0d0b8; --lit-fBg: rgba(0,0,0,.03);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  .card { font-family: Georgia, 'Times New Roman', serif; background: #fffdf8; border-radius: 12px; overflow: hidden; }
-  .card-header { background: linear-gradient(135deg, #6b3a2a 0%, #8b4e32 60%, #a0622a 100%); padding: .9rem 1.25rem .75rem; display: flex; align-items: center; gap: .6rem; }
+  .card {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--card-background-color, #fffdf8);
+    border-radius: 12px; overflow: hidden;
+  }
+  .card-header {
+    background: linear-gradient(135deg, var(--lit-hF) 0%, var(--lit-hT) 100%);
+    padding: .9rem 1.25rem .75rem; display: flex; align-items: center; gap: .6rem;
+  }
   .card-header-icon { font-size: 1rem; color: #f5d78e; flex-shrink: 0; }
   .card-label { font-size: .6rem; font-family: Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #f5d78e; opacity: .85; }
   .card-date { font-size: .8rem; color: #fff; margin-top: .1rem; font-family: Arial, sans-serif; }
   .card-image-wrap { position: relative; height: 190px; overflow: hidden; }
   .card-image-wrap svg { width: 100%; height: 100%; display: block; }
   .card-body { padding: .9rem 1.1rem 1.1rem; }
-  .card-name { font-size: 1.3rem; color: #3a1f0e; line-height: 1.2; margin-bottom: .2rem; }
-  .card-feast { font-size: .7rem; font-family: Arial, sans-serif; color: #8b4e32; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
-  .card-divider { border: none; border-top: 1px solid #e0d0b8; margin-bottom: .75rem; }
+  .card-name { font-size: 1.3rem; color: var(--primary-text-color, #3a1f0e); line-height: 1.2; margin-bottom: .2rem; }
+  .card-feast { font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
+  .card-divider { border: none; border-top: 1px solid var(--lit-div); margin-bottom: .75rem; }
   .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem; }
-  .card-tag { font-size: .65rem; font-family: Arial, sans-serif; background: #f0e6d0; color: #6b3a2a; border: 1px solid #d4b896; border-radius: 20px; padding: .18rem .5rem; }
-  .card-bio { font-size: .85rem; color: #4a3020; line-height: 1.6; margin-bottom: .9rem; }
-  .card-quote { background: #f5ede0; border-left: 3px solid #8b4e32; border-radius: 0 8px 8px 0; padding: .6rem .85rem; margin-bottom: .9rem; display: none; }
+  .card-tag { font-size: .65rem; font-family: Arial, sans-serif; background: var(--lit-tBg); color: var(--lit-tTx); border: 1px solid var(--lit-tBo); border-radius: 20px; padding: .18rem .5rem; }
+  .card-bio { font-size: .85rem; color: var(--secondary-text-color, #4a3020); line-height: 1.6; margin-bottom: .9rem; }
+  .card-quote { background: var(--lit-qBg); border-left: 3px solid var(--lit-qBo); border-radius: 0 8px 8px 0; padding: .6rem .85rem; margin-bottom: .9rem; display: none; }
   .card-quote.show { display: block; }
-  .card-quote p { font-size: .8rem; color: #5a3520; font-style: italic; line-height: 1.5; }
-  .card-quote cite { display: block; margin-top: .3rem; font-size: .7rem; font-family: Arial, sans-serif; color: #8b6040; font-style: normal; }
-  .card-footer { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.1rem .8rem; border-top: 1px solid #e0d0b8; background: #fdf8f0; }
-  .card-source { font-size: .68rem; font-family: Arial, sans-serif; color: #9a7850; }
-  .card-link { font-size: .72rem; font-family: Arial, sans-serif; color: #8b4e32; text-decoration: none; border: 1px solid #c08040; border-radius: 20px; padding: .25rem .7rem; transition: background .2s, color .2s; }
-  .card-link:hover { background: #8b4e32; color: #fff; }
-  .shimmer { background: linear-gradient(90deg,#e8dcc8 25%,#f5ede0 50%,#e8dcc8 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; color: transparent !important; }
+  .card-quote p { font-size: .8rem; color: var(--lit-qTx); font-style: italic; line-height: 1.5; }
+  .card-quote cite { display: block; margin-top: .3rem; font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); font-style: normal; opacity: .8; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.1rem .8rem; border-top: 1px solid var(--lit-div); background: var(--lit-fBg); }
+  .card-source { font-size: .68rem; font-family: Arial, sans-serif; color: var(--secondary-text-color, #9a7850); opacity: .8; }
+  .card-link { font-size: .72rem; font-family: Arial, sans-serif; color: var(--lit-ac); text-decoration: none; border: 1px solid var(--lit-ac); border-radius: 20px; padding: .25rem .7rem; transition: background .2s, color .2s; opacity: .85; }
+  .card-link:hover { background: var(--lit-ac); color: #fff; opacity: 1; }
+  .shimmer { background: linear-gradient(90deg, var(--secondary-background-color,#e8dcc8) 25%, var(--card-background-color,#f5ede0) 50%, var(--secondary-background-color,#e8dcc8) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; color: transparent !important; }
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 `;
 
@@ -384,8 +457,25 @@ class SaintOfDayCard extends HTMLElement {
     this._render(saint);
   }
 
+  _applyTheme(t) {
+    const host = this;
+    host.style.setProperty('--lit-hF', t.hF);
+    host.style.setProperty('--lit-hT', t.hT);
+    host.style.setProperty('--lit-ac', t.ac);
+    host.style.setProperty('--lit-tBg', t.tBg);
+    host.style.setProperty('--lit-tBo', t.tBo);
+    host.style.setProperty('--lit-tTx', t.tTx);
+    host.style.setProperty('--lit-qBg', t.qBg);
+    host.style.setProperty('--lit-qBo', t.qBo);
+    host.style.setProperty('--lit-qTx', t.qTx);
+    host.style.setProperty('--lit-div', t.div);
+    host.style.setProperty('--lit-fBg', t.fBg);
+  }
+
   _render(s) {
     const $ = this._$;
+
+    this._applyTheme(getLiturgicalTheme(s));
 
     ['name', 'feast', 'bio'].forEach(id => {
       const el = $(id);
@@ -409,6 +499,19 @@ class SaintOfDayCard extends HTMLElement {
     $('illustration').innerHTML = getIllustration(s);
     $('source-label').textContent = s.source || 'Roman Catholic Calendar';
     $('link').href = s.url || 'https://www.catholic.org/saints/';
+
+    this._scheduleMidnightRefresh();
+  }
+
+  _scheduleMidnightRefresh() {
+    clearTimeout(this._midnightTimer);
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    this._midnightTimer = setTimeout(() => {
+      this._init();
+      this._loaded = false;
+      this._load();
+    }, midnight - now + 1000);
   }
 }
 
