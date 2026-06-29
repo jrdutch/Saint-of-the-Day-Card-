@@ -236,8 +236,8 @@ function getLiturgicalTheme(saint) {
   const name = (saint.name || '').toLowerCase();
 
   // Feast-specific overrides take priority over season
-  if (/\bmartyr\b/.test(tags)) return THEMES.martyr;
-  if (/\bvirgin\b/.test(tags)) return THEMES.virgin;
+  if (/\bmartyrs?\b/.test(tags)) return THEMES.martyr;
+  if (/\bvirgins?\b/.test(tags)) return THEMES.virgin;
   if (/blessed virgin|our lady|marian/.test(tags) ||
       /our lady|immaculate|assumption|annunciation|nativity of.*mary|visitation/.test(name))
     return THEMES.marian;
