@@ -333,6 +333,7 @@ const CARD_CSS = `
   .card-date { font-size: .8rem; color: #fff; margin-top: .1rem; font-family: Arial, sans-serif; }
   .card-image-wrap { position: relative; height: 190px; overflow: hidden; }
   .card-image-wrap svg { width: 100%; height: 100%; display: block; }
+  .card-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .card-body { padding: .9rem 1.1rem 1.1rem; }
   .card-name { font-size: 1.3rem; color: var(--primary-text-color, #3a1f0e); line-height: 1.2; margin-bottom: .2rem; }
   .card-feast { font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
@@ -389,11 +390,17 @@ function parseRSS(xml) {
   const g = tag => item.querySelector(tag)?.textContent?.trim() || '';
   const title = g('title');
   const link  = g('link') || 'https://www.catholic.org/saints/';
+
+  // Image from <media:content url="..."> or fallback to <img> inside description
+  let imageUrl = item.querySelector('media\\:content, content')?.getAttribute('url') || '';
   const tmp = document.createElement('div');
   tmp.innerHTML = g('description');
+  if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
+  tmp.querySelectorAll('img').forEach(el => el.remove());
   const bio = tmp.textContent.replace(/\s+/g, ' ').trim();
+
   if (!title) return null;
-  return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: link, source: 'catholic.org' };
+  return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: link, imageUrl, source: 'uCatholic' };
 }
 
 function todayKey() {
@@ -443,7 +450,7 @@ class SaintOfDayCard extends HTMLElement {
     let saint = null;
 
     try {
-      const r = await fetch('https://www.catholic.org/xml/rss_sofd.php',
+      const r = await fetch('https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
                             { signal: AbortSignal.timeout(7000) });
       if (r.ok) saint = parseRSS(await r.text());
     } catch (_) { /* fall through to embedded data */ }
@@ -502,7 +509,11 @@ class SaintOfDayCard extends HTMLElement {
       $('quote').classList.add('show');
     }
 
-    $('illustration').innerHTML = getIllustration(s);
+    if (s.imageUrl) {
+      $('illustration').innerHTML = `<img src="${s.imageUrl}" alt="${s.name.replace(/"/g,'&quot;')}" loading="lazy">`;
+    } else {
+      $('illustration').innerHTML = getIllustration(s);
+    }
     $('source-label').textContent = s.source || 'Roman Catholic Calendar';
     $('link').href = s.url || 'https://www.catholic.org/saints/';
 
