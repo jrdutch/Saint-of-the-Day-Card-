@@ -625,9 +625,14 @@ document.getElementById('date').textContent = new Date().toLocaleDateString('en-
     console.info('Saint card: RSS unavailable, using embedded data.');
   }
 
+  const d = new Date();
+  const key = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+  // RSS returns only generic tags — enrich with curated tags when available
+  // so liturgical color detection (martyr, virgin, marian) works correctly.
+  if (saint && SAINTS[key]) saint.tags = SAINTS[key].tags;
+
   if (!saint) {
-    const d = new Date();
-    const key = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     saint = SAINTS[key] || {
       name:'Saints of the Roman Calendar', feast:'Feast Day',
       tags:['Catholic','Holy Men and Women'],
@@ -636,6 +641,7 @@ document.getElementById('date').textContent = new Date().toLocaleDateString('en-
       url:'https://www.catholic.org/saints/', source:'Roman Catholic Calendar',
     };
   }
+
 
   showSaint(saint);
 })();

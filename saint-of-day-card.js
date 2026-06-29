@@ -448,8 +448,13 @@ class SaintOfDayCard extends HTMLElement {
       if (r.ok) saint = parseRSS(await r.text());
     } catch (_) { /* fall through to embedded data */ }
 
+    // RSS returns only generic tags — enrich with curated tags when available
+    // so liturgical color detection (martyr, virgin, marian) works correctly.
+    const embedded = SAINTS[todayKey()];
+    if (saint && embedded) saint.tags = embedded.tags;
+
     if (!saint) {
-      saint = SAINTS[todayKey()] || {
+      saint = embedded || {
         name: 'Saints of the Roman Calendar', feast: 'Feast Day',
         tags: ['Catholic', 'Holy Men and Women'],
         bio: "The Church honors saints every day of the year — holy men and women who bore witness to Christ through heroic virtue. Visit catholic.org to discover today's saint.",
