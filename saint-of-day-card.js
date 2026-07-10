@@ -327,26 +327,39 @@ const CARD_CSS = `
   .card-header {
     background: linear-gradient(135deg, var(--lit-hF) 0%, var(--lit-hT) 100%);
     padding: .9rem 1.25rem .75rem; display: flex; align-items: center; gap: .6rem;
+    border-bottom: 2px solid #c9a227;
   }
   .card-header-icon { font-size: 1rem; color: #f5d78e; flex-shrink: 0; }
-  .card-label { font-size: .6rem; font-family: Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #f5d78e; opacity: .85; }
+  .card-label { font-size: .66rem; font-family: Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: #f5d78e; opacity: .85; }
   .card-date { font-size: .8rem; color: #fff; margin-top: .1rem; font-family: Arial, sans-serif; }
   .card-image-wrap { position: relative; height: 190px; overflow: hidden; }
   .card-image-wrap svg { width: 100%; height: 100%; display: block; }
-  .card-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Bias the crop toward the top so faces in portrait paintings stay in frame */
+  .card-image-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; }
+  /* Dissolve the photo's base into the card instead of ending in a hard edge */
+  .card-image-wrap::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 44px;
+    background: linear-gradient(to bottom, transparent, var(--ha-card-background, var(--card-background-color, #fff)));
+    pointer-events: none;
+  }
   .card-body { padding: .9rem 1.1rem 1.1rem; }
   .card-name { font-size: 1.3rem; color: var(--primary-text-color, #3a1f0e); line-height: 1.2; margin-bottom: .2rem; }
-  .card-feast { font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
-  .card-divider { border: none; border-top: 1px solid var(--lit-div); margin-bottom: .75rem; }
+  .card-feast { font-size: .85rem; font-family: Georgia, serif; font-variant: small-caps; color: var(--lit-ac); letter-spacing: .14em; margin-bottom: .75rem; }
+  .card-divider { display: flex; align-items: center; gap: .6rem; border: none; margin-bottom: .75rem; }
+  .card-divider::before, .card-divider::after { content: ''; flex: 1; height: 1px; }
+  .card-divider::before { background: linear-gradient(to right, transparent, var(--lit-div)); }
+  .card-divider::after { background: linear-gradient(to left, transparent, var(--lit-div)); }
+  .card-divider span { color: var(--lit-ac); font-size: .8rem; line-height: 1; opacity: .7; }
   .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .75rem; }
-  .card-tag { font-size: .65rem; font-family: Arial, sans-serif; background: var(--lit-tBg); color: var(--primary-text-color, #3a1f0e); border: 1px solid var(--lit-tBo); border-radius: 20px; padding: .18rem .5rem; }
+  .card-tag { font-size: .7rem; font-family: Arial, sans-serif; background: var(--lit-tBg); color: var(--primary-text-color, #3a1f0e); border: 1px solid var(--lit-tBo); border-radius: 20px; padding: .18rem .5rem; }
   .card-bio { font-size: .85rem; color: var(--secondary-text-color, #4a3020); line-height: 1.6; margin-bottom: .9rem; }
-  .card-quote { background: var(--lit-qBg); border-left: 3px solid var(--lit-qBo); border-radius: 0 8px 8px 0; padding: .6rem .85rem; margin-bottom: .9rem; display: none; }
+  .card-quote { position: relative; background: var(--lit-qBg); border-left: 3px solid var(--lit-qBo); border-radius: 0 8px 8px 0; padding: .6rem .85rem .6rem 2.3rem; margin-bottom: .9rem; display: none; }
+  .card-quote::before { content: '\\201C'; position: absolute; left: .55rem; top: -.05rem; font-family: Georgia, serif; font-size: 2.3rem; line-height: 1; color: var(--lit-ac); opacity: .35; }
   .card-quote.show { display: block; }
   .card-quote p { font-size: .8rem; color: var(--primary-text-color, #5a3520); font-style: italic; line-height: 1.5; opacity: .9; }
   .card-quote cite { display: block; margin-top: .3rem; font-size: .7rem; font-family: Arial, sans-serif; color: var(--lit-ac); font-style: normal; opacity: .8; }
   .card-footer { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.1rem .8rem; border-top: 1px solid var(--lit-div); background: var(--lit-fBg); }
-  .card-source { font-size: .68rem; font-family: Arial, sans-serif; color: var(--secondary-text-color, #9a7850); opacity: .8; }
+  .card-source { font-size: .72rem; font-family: Arial, sans-serif; color: var(--secondary-text-color, #9a7850); opacity: .8; }
   .card-link { font-size: .72rem; font-family: Arial, sans-serif; color: var(--lit-ac); text-decoration: none; border: 1px solid var(--lit-ac); border-radius: 20px; padding: .25rem .7rem; transition: background .2s, color .2s; opacity: .85; }
   .card-link:hover { background: var(--lit-ac); color: #fff; opacity: 1; }
   .shimmer { background: linear-gradient(90deg, var(--secondary-background-color,#e8dcc8) 25%, var(--card-background-color,#f5ede0) 50%, var(--secondary-background-color,#e8dcc8) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; color: transparent !important; }
@@ -367,7 +380,7 @@ const CARD_HTML = `
     <div class="card-body">
       <h2 class="card-name shimmer" id="name" style="height:1.5rem;width:70%">&nbsp;</h2>
       <p class="card-feast shimmer" id="feast" style="height:.85rem;width:40%;margin-bottom:.75rem">&nbsp;</p>
-      <hr class="card-divider"/>
+      <div class="card-divider"><span>✠</span></div>
       <div class="card-tags" id="tags"></div>
       <p class="card-bio shimmer" id="bio" style="height:4.5rem;width:100%">&nbsp;</p>
       <blockquote class="card-quote" id="quote">
@@ -385,21 +398,36 @@ const CARD_HTML = `
 // ── RSS parser ────────────────────────────────────────────────────────────────
 function parseRSS(xml) {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  const item = doc.querySelector('item');
-  if (!item) return null;
-  const g = tag => item.querySelector(tag)?.textContent?.trim() || '';
-  const title = g('title');
-  const link  = g('link') || 'https://www.catholic.org/saints/';
+  if (doc.querySelector('parsererror')) return null;
+  const items = Array.from(doc.getElementsByTagName('item'));
+  if (!items.length) return null;
 
-  // Image from <media:content url="..."> or fallback to <img> inside description
-  let imageUrl = item.querySelector('media\\:content, content')?.getAttribute('url') || '';
+  // Prefer the item published today; otherwise accept the newest item only if
+  // it is fresh (< 36h old) so a dead feed never shows a stale saint.
+  const now = new Date();
+  const pubOf = it => new Date(it.getElementsByTagName('pubDate')[0]?.textContent || '');
+  const sameDay = d => !isNaN(d) && d.getFullYear() === now.getFullYear() &&
+                       d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  let item = items.find(it => sameDay(pubOf(it)));
+  if (!item) {
+    const pd = pubOf(items[0]);
+    if (isNaN(pd) || now - pd > 36 * 3600 * 1000) return null;
+    item = items[0];
+  }
+
+  // getElementsByTagName handles the media: namespace reliably; querySelector doesn't.
+  const g = tag => item.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
+  const title = g('title');
+  if (!title) return null;
+  const link = g('link') || 'https://www.catholic.org/saints/';
+
+  let imageUrl = item.getElementsByTagName('media:content')[0]?.getAttribute('url') || '';
   const tmp = document.createElement('div');
   tmp.innerHTML = g('description');
   if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
   tmp.querySelectorAll('img').forEach(el => el.remove());
   const bio = tmp.textContent.replace(/\s+/g, ' ').trim();
 
-  if (!title) return null;
   return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: link, imageUrl, source: 'uCatholic' };
 }
 
@@ -411,10 +439,8 @@ function todayKey() {
 // ── Custom Element ────────────────────────────────────────────────────────────
 class SaintOfDayCard extends HTMLElement {
 
-  static getConfigElement() {
-    return document.createElement('saint-of-day-card-editor');
-  }
-
+  // No getConfigElement: the card takes no options, so HA falls back to its
+  // built-in YAML editor instead of a broken visual editor.
   static getStubConfig() {
     return {};
   }
@@ -448,17 +474,33 @@ class SaintOfDayCard extends HTMLElement {
 
   async _load() {
     let saint = null;
+    const CACHE_KEY = 'saint-of-day-card-cache';
 
     try {
       const r = await fetch('https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
                             { signal: AbortSignal.timeout(7000) });
       if (r.ok) saint = parseRSS(await r.text());
-    } catch (_) { /* fall through to embedded data */ }
+    } catch (_) { /* fall through to cached/embedded data */ }
 
-    // RSS returns only generic tags — enrich with curated tags when available
-    // so liturgical color detection (martyr, virgin, marian) works correctly.
+    if (saint) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ key: todayKey(), saint })); } catch (_) {}
+    } else {
+      // Feed unreachable — reuse today's earlier successful fetch if we have one.
+      try {
+        const c = JSON.parse(localStorage.getItem(CACHE_KEY));
+        if (c && c.key === todayKey()) saint = c.saint;
+      } catch (_) {}
+    }
+
+    // RSS returns only generic metadata — enrich from the curated dataset so
+    // liturgical colors (martyr, virgin, marian), the true feast rank, and a
+    // quote all survive regardless of data source.
     const embedded = SAINTS[todayKey()];
-    if (saint && embedded) saint.tags = embedded.tags;
+    if (saint && embedded) {
+      saint.tags = embedded.tags;
+      saint.feast = embedded.feast;
+      if (!saint.quote) { saint.quote = embedded.quote; saint.quoteSource = embedded.quoteSource; }
+    }
 
     if (!saint) {
       saint = embedded || {
@@ -509,15 +551,30 @@ class SaintOfDayCard extends HTMLElement {
       $('quote').classList.add('show');
     }
 
+    const wrap = $('illustration');
     if (s.imageUrl) {
-      $('illustration').innerHTML = `<img src="${s.imageUrl}" alt="${s.name.replace(/"/g,'&quot;')}" loading="lazy">`;
+      wrap.innerHTML = '';
+      const img = document.createElement('img');
+      img.alt = s.name;
+      img.loading = 'lazy';
+      img.onerror = () => { wrap.innerHTML = getIllustration(s); };
+      img.src = s.imageUrl;
+      wrap.appendChild(img);
     } else {
-      $('illustration').innerHTML = getIllustration(s);
+      wrap.innerHTML = getIllustration(s);
     }
     $('source-label').textContent = s.source || 'Roman Catholic Calendar';
     $('link').href = s.url || 'https://www.catholic.org/saints/';
 
+    this._renderedKey = todayKey();
     this._scheduleMidnightRefresh();
+  }
+
+  _refreshIfStale() {
+    if (this._renderedKey && this._renderedKey !== todayKey()) {
+      this._init();
+      this._load();
+    }
   }
 
   _scheduleMidnightRefresh() {
@@ -529,6 +586,23 @@ class SaintOfDayCard extends HTMLElement {
       this._loaded = false;
       this._load();
     }, midnight - now + 1000);
+  }
+
+  connectedCallback() {
+    // Timers get throttled on background tabs and sleeping wall tablets, so
+    // also re-check the date whenever the dashboard becomes visible again.
+    if (!this._visListener) {
+      this._visListener = () => {
+        if (document.visibilityState === 'visible') this._refreshIfStale();
+      };
+    }
+    document.addEventListener('visibilitychange', this._visListener);
+    this._refreshIfStale();
+  }
+
+  disconnectedCallback() {
+    if (this._visListener) document.removeEventListener('visibilitychange', this._visListener);
+    clearTimeout(this._midnightTimer);
   }
 }
 
