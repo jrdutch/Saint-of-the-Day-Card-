@@ -402,18 +402,9 @@ function parseRSS(xml) {
   const items = Array.from(doc.getElementsByTagName('item'));
   if (!items.length) return null;
 
-  // Prefer the item published today; otherwise accept the newest item only if
-  // it is fresh (< 36h old) so a dead feed never shows a stale saint.
-  const now = new Date();
   const pubOf = it => new Date(it.getElementsByTagName('pubDate')[0]?.textContent || '');
-  const sameDay = d => !isNaN(d) && d.getFullYear() === now.getFullYear() &&
-                       d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-  let item = items.find(it => sameDay(pubOf(it)));
-  if (!item) {
-    const pd = pubOf(items[0]);
-    if (isNaN(pd) || now - pd > 36 * 3600 * 1000) return null;
-    item = items[0];
-  }
+  const item = pickFreshest(items, pubOf);
+  if (!item) return null;
 
   // getElementsByTagName handles the media: namespace reliably; querySelector doesn't.
   const g = tag => item.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
@@ -444,19 +435,29 @@ const FEED_ATTEMPTS = [
   { url: 'https://api.allorigins.win/get?url=' + FEED_ENC, json: true },
 ];
 
+// Items may not be ordered newest-first, and the day's saint can be published
+// the previous evening in local time — so prefer an item dated today, else
+// take the newest item by pubDate as long as it is reasonably fresh (< 48h).
+function pickFreshest(items, pubOf) {
+  const now = new Date();
+  const sameDay = d => !isNaN(d) && d.getFullYear() === now.getFullYear() &&
+                       d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const todays = items.find(it => sameDay(pubOf(it)));
+  if (todays) return todays;
+  let best = null, bestT = -Infinity;
+  for (const it of items) {
+    const t = pubOf(it).getTime();
+    if (!isNaN(t) && t > bestT) { bestT = t; best = it; }
+  }
+  return best && now - bestT <= 48 * 3600 * 1000 ? best : null;
+}
+
 // rss2json item dates are "YYYY-MM-DD HH:MM:SS" in UTC.
 function parseRSS2JSON(data) {
   if (!data || data.status !== 'ok' || !Array.isArray(data.items) || !data.items.length) return null;
-  const now = new Date();
   const pubOf = it => new Date(String(it.pubDate || '').replace(' ', 'T') + 'Z');
-  const sameDay = d => !isNaN(d) && d.getFullYear() === now.getFullYear() &&
-                       d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-  let item = data.items.find(it => sameDay(pubOf(it)));
-  if (!item) {
-    const pd = pubOf(data.items[0]);
-    if (isNaN(pd) || now - pd > 36 * 3600 * 1000) return null;
-    item = data.items[0];
-  }
+  const item = pickFreshest(data.items, pubOf);
+  if (!item) return null;
   const title = (item.title || '').trim();
   if (!title) return null;
   let imageUrl = item.thumbnail || item.enclosure?.link || '';
@@ -469,7 +470,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.2.4: fetching feed…');
+  console.info('Saint card v1.2.5: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
