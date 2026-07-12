@@ -682,17 +682,22 @@ const FEED_ATTEMPTS = [
 ];
 
 async function fetchSaint() {
+  console.info('Saint card v1.2.3: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
+    const host = new URL(a.url).host;
     try {
       const r = await fetch(a.url, { signal: AbortSignal.timeout(8000) });
-      if (!r.ok) continue;
+      if (!r.ok) { console.info(`Saint card: ${host} → HTTP ${r.status}`); continue; }
       const xml = a.json ? (await r.json()).contents : await r.text();
-      if (!xml) continue;
-      const saint = parseRSS(xml);
+      const saint = xml ? parseRSS(xml) : null;
+      console.info(`Saint card: ${host} → 200, parsed=${!!saint}` +
+                   (saint ? '' : `, body starts: ${String(xml).slice(0, 120)}`));
       if (saint) return saint;
-    } catch(e) { /* try next */ }
+    } catch(e) {
+      console.info(`Saint card: ${host} → ${e.name}: ${e.message}`);
+    }
   }
-  console.info('Saint card: RSS unavailable, using cached/embedded data.');
+  console.info('Saint card: all feed attempts failed, using cached/embedded data.');
   return null;
 }
 
