@@ -434,18 +434,24 @@ function parseRSS(xml) {
 // rss.app serves the XML without CORS headers, so a direct browser fetch is
 // blocked. Try direct first (in case that changes), then CORS-friendly relays.
 const FEED_URL = 'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml';
+const FEED_ENC = encodeURIComponent(FEED_URL);
 const FEED_ATTEMPTS = [
-  FEED_URL,
-  'https://api.allorigins.win/raw?url=' + encodeURIComponent(FEED_URL),
-  'https://corsproxy.io/?url=' + encodeURIComponent(FEED_URL),
+  { url: FEED_URL },
+  { url: 'https://corsproxy.io/?url=' + FEED_ENC },
+  { url: 'https://api.codetabs.com/v1/proxy?quest=' + FEED_ENC },
+  // allorigins /get wraps the body in JSON ({contents: "..."}); it is more
+  // reliable than its /raw endpoint, which intermittently 502s.
+  { url: 'https://api.allorigins.win/get?url=' + FEED_ENC, json: true },
 ];
 
 async function fetchSaint() {
-  for (const url of FEED_ATTEMPTS) {
+  for (const a of FEED_ATTEMPTS) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      const r = await fetch(a.url, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) continue;
-      const saint = parseRSS(await r.text());
+      const xml = a.json ? (await r.json()).contents : await r.text();
+      if (!xml) continue;
+      const saint = parseRSS(xml);
       if (saint) return saint;
     } catch (_) { /* try next */ }
   }
