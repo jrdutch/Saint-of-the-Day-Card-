@@ -583,7 +583,9 @@ function parseRSS(xml) {
   const items = Array.from(doc.getElementsByTagName('item'));
   if (!items.length) { console.info('Saint card: feed contained no <item> elements'); return null; }
 
-  const item = pickFreshest(items, it => parseFeedDate(it.getElementsByTagName('pubDate')[0]?.textContent));
+  const item = pickFreshest(
+    preferSaintItems(items, it => it.getElementsByTagName('link')[0]?.textContent),
+    it => parseFeedDate(it.getElementsByTagName('pubDate')[0]?.textContent));
   if (!item) return null;
 
   // getElementsByTagName handles the media: namespace reliably; querySelector doesn't.
@@ -675,9 +677,16 @@ document.addEventListener('visibilitychange', () => {
 // feed server-side and returns JSON with CORS enabled — then the direct URL,
 // then generic CORS relays.
 const FEEDS = [
-  'https://ucatholic.com/category/saint-of-the-day/feed/',
+  'https://ucatholic.com/feed/',
   'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
 ];
+
+// uCatholic's main feed mixes saint posts (linked under /saints/) with other
+// articles — restrict to saint items when any are present.
+function preferSaintItems(items, linkOf) {
+  const saints = items.filter(it => /\/saints?\//.test(linkOf(it) || ''));
+  return saints.length ? saints : items;
+}
 const FEED_ATTEMPTS = FEEDS.flatMap(f => {
   const enc = encodeURIComponent(f);
   return [
@@ -723,7 +732,8 @@ function parseRSS2JSON(data) {
     console.info('Saint card: rss2json response not usable (status/items)');
     return null;
   }
-  const item = pickFreshest(data.items, it => parseFeedDate(it.pubDate));
+  const item = pickFreshest(preferSaintItems(data.items, it => it.link),
+                            it => parseFeedDate(it.pubDate));
   if (!item) return null;
   const title = (item.title || '').trim();
   if (!title) return null;
@@ -742,7 +752,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.3.0: fetching feed…');
+  console.info('Saint card v1.3.1: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
