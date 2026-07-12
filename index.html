@@ -575,26 +575,37 @@ function applyTheme(t) {
 // ── RSS parser ────────────────────────────────────────────────────────────────
 function parseRSS(xml) {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
-  if (doc.querySelector('parsererror')) return null;
+  const perr = doc.querySelector('parsererror');
+  if (perr) {
+    console.info('Saint card: XML parser error: ' + perr.textContent.replace(/\s+/g, ' ').slice(0, 200));
+    return null;
+  }
   const items = Array.from(doc.getElementsByTagName('item'));
-  if (!items.length) return null;
+  if (!items.length) { console.info('Saint card: feed contained no <item> elements'); return null; }
 
-  const pubOf = it => new Date(it.getElementsByTagName('pubDate')[0]?.textContent || '');
-  const item = pickFreshest(items, pubOf);
+  const item = pickFreshest(items, it => parseFeedDate(it.getElementsByTagName('pubDate')[0]?.textContent));
   if (!item) return null;
 
   // getElementsByTagName handles the media: namespace reliably; querySelector doesn't.
   const g = tag => item.getElementsByTagName(tag)[0]?.textContent?.trim() || '';
   const title = g('title');
-  if (!title) return null;
+  if (!title) { console.info('Saint card: feed item has no title'); return null; }
   const link = g('link') || 'https://www.catholic.org/saints/';
 
-  let imageUrl = item.getElementsByTagName('media:content')[0]?.getAttribute('url') || '';
+  // WordPress feeds carry the full post in content:encoded and often lack
+  // media:content; rss.app puts everything in description. Handle both.
+  let imageUrl = item.getElementsByTagName('media:content')[0]?.getAttribute('url') ||
+                 item.getElementsByTagName('enclosure')[0]?.getAttribute('url') || '';
   const tmp = document.createElement('div');
-  tmp.innerHTML = g('description');
+  tmp.innerHTML = g('content:encoded') || g('description');
   if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
   tmp.querySelectorAll('img').forEach(el => el.remove());
-  const bio = tmp.textContent.replace(/\s+/g,' ').trim();
+  let bio = tmp.textContent.replace(/\s+/g,' ').trim();
+  if (bio.length > 480) {
+    const cut = bio.slice(0, 480);
+    const end = cut.lastIndexOf('. ');
+    bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
+  }
 
   return { name:title, feast:'Feast Day', tags:['Catholic','Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url:link, imageUrl, source:'uCatholic' };
 }
@@ -659,18 +670,31 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// rss.app serves the XML without CORS headers, so a direct browser fetch is
-// blocked. rss2json.com exists for exactly this: it fetches the feed
-// server-side and returns JSON with CORS enabled. Generic relays as backup.
-const FEED_URL = 'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml';
-const FEED_ENC = encodeURIComponent(FEED_URL);
-const FEED_ATTEMPTS = [
-  { url: 'https://api.rss2json.com/v1/api.json?rss_url=' + FEED_ENC, rss2json: true },
-  { url: FEED_URL },
-  { url: 'https://corsproxy.io/?url=' + FEED_ENC },
-  { url: 'https://api.codetabs.com/v1/proxy?quest=' + FEED_ENC },
-  { url: 'https://api.allorigins.win/get?url=' + FEED_ENC, json: true },
+// Two sources: uCatholic's own WordPress feed (primary) and the rss.app
+// mirror of it (backup). For each, try rss2json.com first — it fetches the
+// feed server-side and returns JSON with CORS enabled — then the direct URL,
+// then generic CORS relays.
+const FEEDS = [
+  'https://ucatholic.com/category/saint-of-the-day/feed/',
+  'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
 ];
+const FEED_ATTEMPTS = FEEDS.flatMap(f => {
+  const enc = encodeURIComponent(f);
+  return [
+    { url: 'https://api.rss2json.com/v1/api.json?rss_url=' + enc, rss2json: true },
+    { url: f },
+    { url: 'https://corsproxy.io/?url=' + enc },
+    { url: 'https://api.allorigins.win/get?url=' + enc, json: true },
+  ];
+});
+
+// Dates arrive in RFC-822 ("Sun, 12 Jul 2026 04:03:00 GMT") or SQL-ish
+// ("2026-07-12 04:03:00") form depending on the source — accept both.
+function parseFeedDate(s) {
+  let d = new Date(String(s || ''));
+  if (isNaN(d)) d = new Date(String(s || '').replace(' ', 'T') + 'Z');
+  return d;
+}
 
 // Items may not be ordered newest-first, and the day's saint can be published
 // the previous evening in local time — so prefer an item dated today, else
@@ -694,25 +718,31 @@ function pickFreshest(items, pubOf) {
   return best;
 }
 
-// rss2json item dates are "YYYY-MM-DD HH:MM:SS" in UTC.
 function parseRSS2JSON(data) {
-  if (!data || data.status !== 'ok' || !Array.isArray(data.items) || !data.items.length) return null;
-  const pubOf = it => new Date(String(it.pubDate || '').replace(' ', 'T') + 'Z');
-  const item = pickFreshest(data.items, pubOf);
+  if (!data || data.status !== 'ok' || !Array.isArray(data.items) || !data.items.length) {
+    console.info('Saint card: rss2json response not usable (status/items)');
+    return null;
+  }
+  const item = pickFreshest(data.items, it => parseFeedDate(it.pubDate));
   if (!item) return null;
   const title = (item.title || '').trim();
   if (!title) return null;
   let imageUrl = item.thumbnail || item.enclosure?.link || '';
   const tmp = document.createElement('div');
-  tmp.innerHTML = item.description || '';
+  tmp.innerHTML = item.description || item.content || '';
   if (!imageUrl) imageUrl = tmp.querySelector('img')?.src || '';
   tmp.querySelectorAll('img').forEach(el => el.remove());
-  const bio = tmp.textContent.replace(/\s+/g, ' ').trim();
+  let bio = tmp.textContent.replace(/\s+/g, ' ').trim();
+  if (bio.length > 480) {
+    const cut = bio.slice(0, 480);
+    const end = cut.lastIndexOf('. ');
+    bio = end > 200 ? cut.slice(0, end + 1) : cut + '…';
+  }
   return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: item.link || 'https://www.catholic.org/saints/', imageUrl, source: 'uCatholic' };
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.2.6: fetching feed…');
+  console.info('Saint card v1.3.0: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
