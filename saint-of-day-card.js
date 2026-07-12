@@ -431,6 +431,27 @@ function parseRSS(xml) {
   return { name: title, feast: 'Feast Day', tags: ['Catholic', 'Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url: link, imageUrl, source: 'uCatholic' };
 }
 
+// rss.app serves the XML without CORS headers, so a direct browser fetch is
+// blocked. Try direct first (in case that changes), then CORS-friendly relays.
+const FEED_URL = 'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml';
+const FEED_ATTEMPTS = [
+  FEED_URL,
+  'https://api.allorigins.win/raw?url=' + encodeURIComponent(FEED_URL),
+  'https://corsproxy.io/?url=' + encodeURIComponent(FEED_URL),
+];
+
+async function fetchSaint() {
+  for (const url of FEED_ATTEMPTS) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const saint = parseRSS(await r.text());
+      if (saint) return saint;
+    } catch (_) { /* try next */ }
+  }
+  return null;
+}
+
 function todayKey() {
   const d = new Date();
   return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -476,11 +497,7 @@ class SaintOfDayCard extends HTMLElement {
     let saint = null;
     const CACHE_KEY = 'saint-of-day-card-cache';
 
-    try {
-      const r = await fetch('https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
-                            { signal: AbortSignal.timeout(7000) });
-      if (r.ok) saint = parseRSS(await r.text());
-    } catch (_) { /* fall through to cached/embedded data */ }
+    saint = await fetchSaint();
 
     if (saint) {
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ key: todayKey(), saint })); } catch (_) {}

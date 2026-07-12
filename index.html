@@ -668,17 +668,31 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-(async () => {
-  let saint = null;
-  const CACHE_KEY = 'saint-of-day-cache';
+// rss.app serves the XML without CORS headers, so a direct browser fetch is
+// blocked. Try direct first (in case that changes), then CORS-friendly relays.
+const FEED_URL = 'https://rss.app/feeds/1tWSQDMDaOnerbi9.xml';
+const FEED_ATTEMPTS = [
+  FEED_URL,
+  'https://api.allorigins.win/raw?url=' + encodeURIComponent(FEED_URL),
+  'https://corsproxy.io/?url=' + encodeURIComponent(FEED_URL),
+];
 
-  try {
-    const r = await fetch('https://rss.app/feeds/1tWSQDMDaOnerbi9.xml',
-                          { signal: AbortSignal.timeout(7000) });
-    if (r.ok) saint = parseRSS(await r.text());
-  } catch(e) {
-    console.info('Saint card: RSS unavailable, using cached/embedded data.');
+async function fetchSaint() {
+  for (const url of FEED_ATTEMPTS) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const saint = parseRSS(await r.text());
+      if (saint) return saint;
+    } catch(e) { /* try next */ }
   }
+  console.info('Saint card: RSS unavailable, using cached/embedded data.');
+  return null;
+}
+
+(async () => {
+  const CACHE_KEY = 'saint-of-day-cache';
+  let saint = await fetchSaint();
 
   const d = new Date();
   const key = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
