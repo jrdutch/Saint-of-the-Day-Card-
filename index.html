@@ -686,7 +686,12 @@ function pickFreshest(items, pubOf) {
     const t = pubOf(it).getTime();
     if (!isNaN(t) && t > bestT) { bestT = t; best = it; }
   }
-  return best && now - bestT <= 48 * 3600 * 1000 ? best : null;
+  if (!best || now - bestT > 48 * 3600 * 1000) {
+    console.info(`Saint card: feed has ${items.length} item(s); newest pubDate = ` +
+                 `${best ? new Date(bestT).toString() : 'unparseable'} — too stale, ignoring.`);
+    return null;
+  }
+  return best;
 }
 
 // rss2json item dates are "YYYY-MM-DD HH:MM:SS" in UTC.
@@ -707,7 +712,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.2.5: fetching feed…');
+  console.info('Saint card v1.2.6: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
