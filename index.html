@@ -69,6 +69,26 @@
     }
 
     .card-body { padding: 1rem 1.25rem 1.25rem; }
+
+    /* ── Horizontal layout (add ?layout=horizontal to the URL) ────────────────
+       Image on the left, text on the right. Below 640px the card stacks itself
+       back up so it still reads on a phone. */
+    .card[data-layout="horizontal"] { max-width: 880px; }
+    @media (min-width: 640px) {
+      .card[data-layout="horizontal"] .card-content { display: flex; align-items: stretch; min-height: 240px; }
+      .card[data-layout="horizontal"] .card-image-wrap { flex: 0 0 var(--sotd-image-width, 40%); height: auto; min-width: 0; }
+      /* Out of flow so the panel takes its height from the text column */
+      .card[data-layout="horizontal"] .card-image-wrap img,
+      .card[data-layout="horizontal"] .card-image-wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+      .card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
+      /* Fade into the text column on the right edge, not the bottom */
+      .card[data-layout="horizontal"] .card-image-wrap::after {
+        top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
+        background: linear-gradient(to right, transparent 0%, transparent 45%, var(--card-bg) 100%);
+      }
+      .card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
+    }
+
     .card-name { font-size: 1.4rem; color: var(--text-primary); line-height: 1.2; margin-bottom: .25rem; }
     .card-feast { font-size: .9rem; font-family: Georgia, serif; font-variant: small-caps; color: var(--lit-ac); letter-spacing: .14em; margin-bottom: .85rem; }
     .card-divider { display: flex; align-items: center; gap: .6rem; border: none; margin-bottom: .85rem; }
@@ -106,18 +126,22 @@
     </div>
   </div>
 
-  <div class="card-image-wrap" id="illustration"></div>
+  <!-- Image + text share this row; the horizontal layout turns it into a flex
+       container so they sit side by side instead of stacking. -->
+  <div class="card-content">
+    <div class="card-image-wrap" id="illustration"></div>
 
-  <div class="card-body">
-    <h2 class="card-name shimmer" id="name" style="height:1.6rem;width:70%">&nbsp;</h2>
-    <p class="card-feast shimmer" id="feast" style="height:.9rem;width:45%;margin-bottom:.85rem">&nbsp;</p>
-    <div class="card-divider"><span>✠</span></div>
-    <div class="card-tags" id="tags"></div>
-    <p class="card-bio shimmer" id="bio" style="height:5rem;width:100%">&nbsp;</p>
-    <blockquote class="card-quote" id="quote">
-      <p id="quote-text"></p>
-      <cite id="quote-source"></cite>
-    </blockquote>
+    <div class="card-body">
+      <h2 class="card-name shimmer" id="name" style="height:1.6rem;width:70%">&nbsp;</h2>
+      <p class="card-feast shimmer" id="feast" style="height:.9rem;width:45%;margin-bottom:.85rem">&nbsp;</p>
+      <div class="card-divider"><span>✠</span></div>
+      <div class="card-tags" id="tags"></div>
+      <p class="card-bio shimmer" id="bio" style="height:5rem;width:100%">&nbsp;</p>
+      <blockquote class="card-quote" id="quote">
+        <p id="quote-text"></p>
+        <cite id="quote-source"></cite>
+      </blockquote>
+    </div>
   </div>
 
   <div class="card-footer">
@@ -612,6 +636,33 @@ function parseRSS(xml) {
   return { name:title, feast:'Feast Day', tags:['Catholic','Saint of the Day'], bio: bio || 'Visit the link below to read the full biography.', url:link, imageUrl, source:'uCatholic' };
 }
 
+// ── Layout ────────────────────────────────────────────────────────────────────
+// ?layout=horizontal puts the image on the left and the text on the right.
+// ?image_width=40 (percent) or 260px tunes how wide the image panel is — a bare
+// number is read as a percentage, since a literal % needs escaping in a URL.
+const PARAMS = new URLSearchParams(location.search);
+const LAYOUT = PARAMS.get('layout') === 'horizontal' ? 'horizontal' : 'vertical';
+(function applyLayout() {
+  const card = document.querySelector('.card');
+  card.dataset.layout = LAYOUT;
+  const w = (PARAMS.get('image_width') || '').trim();
+  if (/^\d+(\.\d+)?$/.test(w)) card.style.setProperty('--sotd-image-width', w + '%');
+  else if (/^\d+(\.\d+)?(%|px|rem|em)$/.test(w)) card.style.setProperty('--sotd-image-width', w);
+})();
+
+// The illustrations are drawn on a 420×200 landscape canvas. Side by side the
+// panel is portrait, so fill it and crop the sides (figure and name are
+// centred); stacked, letterbox as usual so nothing is cut off. Mirrors the
+// 640px media query above — an SVG attribute can't be set from CSS.
+const WIDE = window.matchMedia('(min-width: 640px)');
+function fitIllustration() {
+  const svg = document.querySelector('#illustration svg');
+  if (!svg) return;
+  const sideBySide = LAYOUT === 'horizontal' && WIDE.matches;
+  svg.setAttribute('preserveAspectRatio', sideBySide ? 'xMidYMid slice' : 'xMidYMid meet');
+}
+WIDE.addEventListener('change', fitIllustration);
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function showSaint(s) {
   applyTheme(getLiturgicalTheme(s));
@@ -636,16 +687,20 @@ function showSaint(s) {
   }
 
   const wrap = document.getElementById('illustration');
+  const drawIllustration = () => {
+    wrap.innerHTML = getIllustration(s);
+    fitIllustration();
+  };
   if (s.imageUrl) {
     wrap.innerHTML = '';
     const img = document.createElement('img');
     img.alt = s.name;
     img.loading = 'lazy';
-    img.onerror = () => { wrap.innerHTML = getIllustration(s); };
+    img.onerror = drawIllustration;
     img.src = s.imageUrl;
     wrap.appendChild(img);
   } else {
-    wrap.innerHTML = getIllustration(s);
+    drawIllustration();
   }
   document.getElementById('source-label').textContent = s.source || 'Roman Catholic Calendar';
   document.getElementById('link').href = s.url || 'https://www.catholic.org/saints/';
@@ -752,7 +807,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.3.2: fetching feed…');
+  console.info('Saint card v1.4.0: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {

@@ -21,6 +21,10 @@ The card shows:
 - Highlighted quote
 - "Learn More" link to Wikipedia or catholic.org
 
+It comes in two layouts: the default **vertical** (image above the text) and a
+**horizontal** one (image on the left, text on the right) for wide dashboards
+and landscape wall tablets. See [Card options](#card-options) below.
+
 ---
 
 ## Installation
@@ -63,6 +67,47 @@ Follow the official guide at [hacs.xyz/docs/use/](https://hacs.xyz/docs/use/) to
 3. Click **+ Add Card**
 4. Search for **Saint of the Day** — it should appear in the card picker
 5. Click it and then **Save**
+
+---
+
+## Card options
+
+The card works with no options at all. To change the layout, edit the card and
+switch to the code (YAML) editor with the three-dot menu → **Edit in YAML**.
+
+| Option | Values | Default | What it does |
+| --- | --- | --- | --- |
+| `layout` | `vertical`, `horizontal` | `vertical` | `horizontal` puts the image on the left and the name, tags, biography and quote on the right |
+| `image_width` | a percentage or CSS length, e.g. `40%`, `260px` | `40%` | How much of the card's width the image panel takes. Only used by the horizontal layout |
+
+Default (stacked) layout:
+
+```yaml
+type: custom:saint-of-day-card
+```
+
+Horizontal layout:
+
+```yaml
+type: custom:saint-of-day-card
+layout: horizontal
+```
+
+Horizontal, with a wider image panel:
+
+```yaml
+type: custom:saint-of-day-card
+layout: horizontal
+image_width: 50%
+```
+
+**Notes on the horizontal layout**
+
+- It needs room. Below about 430px wide the card stacks itself back up, so it
+  still reads on a phone — nothing to configure.
+- To give it the full width of a dashboard, put it in its own row, or in a
+  **sections** dashboard resize the card to full width (drag its handle, or add
+  `grid_options: {columns: full}` in YAML).
 
 ---
 
@@ -130,6 +175,20 @@ You should see the styled saint card. If you do, continue to Step 5.
    - **Height:** `700` (pixels) — adjust to taste
    - **Title:** leave blank (the card has its own header)
 7. Click **Save**, then click **Done**
+
+### Horizontal layout (manual install)
+
+Add `&layout=horizontal` to the URL to get the image on the left and the text on
+the right:
+
+```
+/local/saint-card/index.html?v=1&layout=horizontal
+```
+
+Then lower the **Height** setting to about `320` — the horizontal card is much
+shorter. You can also set the width of the image panel with `&image_width=50`
+(a number is read as a percentage, because a literal `%` has to be escaped in a
+URL). On a screen narrower than 640px the card stacks itself back up.
 
 ---
 

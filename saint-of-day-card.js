@@ -5,6 +5,10 @@
  * Displays the Catholic saint of the day with biography, feast type,
  * tags, a quote, and a unique SVG illustration.
  *
+ * Options (all optional):
+ *   layout: vertical | horizontal   image above the text (default), or beside it
+ *   image_width: 40%                width of the image panel in horizontal layout
+ *
  * Data: catholic.org RSS feed (live), with a 35+ saint embedded fallback.
  */
 
@@ -311,6 +315,10 @@ const SAINTS = {
 const CARD_CSS = `
   :host {
     display: block;
+    /* The card queries its own width so the horizontal layout can stack itself
+       back up when the dashboard column is too narrow to hold two panels. */
+    container-type: inline-size;
+    --sotd-image-width: 40%;
     --lit-hF: #6b3a2a; --lit-hT: #a0622a; --lit-ac: #8b4e32;
     --lit-tBg: rgba(139,78,50,.12); --lit-tBo: rgba(139,78,50,.3); --lit-tTx: var(--primary-text-color, #3a1f0e);
     --lit-qBg: rgba(139,78,50,.07); --lit-qBo: #8b4e32; --lit-qTx: var(--primary-text-color, #5a3520);
@@ -343,6 +351,35 @@ const CARD_CSS = `
     pointer-events: none;
   }
   .card-body { padding: .9rem 1.1rem 1.1rem; }
+  /* ── Horizontal layout ──────────────────────────────────────────────────────
+     Image on the left, text on the right. Scoped to a container query so a card
+     dropped into a narrow column (or a phone) falls back to the stacked layout
+     on its own — browsers without container query support keep the stacked
+     layout too, which is the safe default. */
+  @container (min-width: 430px) {
+    ha-card[data-layout="horizontal"] .card-content {
+      display: flex; align-items: stretch; min-height: 230px;
+    }
+    ha-card[data-layout="horizontal"] .card-image-wrap {
+      flex: 0 0 var(--sotd-image-width); height: auto; min-width: 0;
+    }
+    /* Taken out of flow so the panel takes its height from the text column
+       instead of dictating it. */
+    ha-card[data-layout="horizontal"] .card-image-wrap img,
+    ha-card[data-layout="horizontal"] .card-image-wrap svg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    /* The panel is tall and narrow here, so crop toward the middle rather than
+       the top — portrait subjects sit centre-frame at this aspect ratio. */
+    ha-card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
+    /* Fade into the text column on the right edge, not the bottom */
+    ha-card[data-layout="horizontal"] .card-image-wrap::after {
+      top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
+      background: linear-gradient(to right, transparent 0%, transparent 45%,
+                  var(--ha-card-background, var(--card-background-color, #fff)) 100%);
+    }
+    ha-card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
+  }
   .card-name { font-size: 1.3rem; color: var(--primary-text-color, #3a1f0e); line-height: 1.2; margin-bottom: .2rem; }
   .card-feast { font-size: .85rem; font-family: Georgia, serif; font-variant: small-caps; color: var(--lit-ac); letter-spacing: .14em; margin-bottom: .75rem; }
   .card-divider { display: flex; align-items: center; gap: .6rem; border: none; margin-bottom: .75rem; }
@@ -376,17 +413,21 @@ const CARD_HTML = `
         <div class="card-date" id="date"></div>
       </div>
     </div>
-    <div class="card-image-wrap" id="illustration"></div>
-    <div class="card-body">
-      <h2 class="card-name shimmer" id="name" style="height:1.5rem;width:70%">&nbsp;</h2>
-      <p class="card-feast shimmer" id="feast" style="height:.85rem;width:40%;margin-bottom:.75rem">&nbsp;</p>
-      <div class="card-divider"><span>✠</span></div>
-      <div class="card-tags" id="tags"></div>
-      <p class="card-bio shimmer" id="bio" style="height:4.5rem;width:100%">&nbsp;</p>
-      <blockquote class="card-quote" id="quote">
-        <p id="quote-text"></p>
-        <cite id="quote-source"></cite>
-      </blockquote>
+    <!-- Image + text share this row; the horizontal layout turns it into a flex
+         container so they sit side by side instead of stacking. -->
+    <div class="card-content">
+      <div class="card-image-wrap" id="illustration"></div>
+      <div class="card-body">
+        <h2 class="card-name shimmer" id="name" style="height:1.5rem;width:70%">&nbsp;</h2>
+        <p class="card-feast shimmer" id="feast" style="height:.85rem;width:40%;margin-bottom:.75rem">&nbsp;</p>
+        <div class="card-divider"><span>✠</span></div>
+        <div class="card-tags" id="tags"></div>
+        <p class="card-bio shimmer" id="bio" style="height:4.5rem;width:100%">&nbsp;</p>
+        <blockquote class="card-quote" id="quote">
+          <p id="quote-text"></p>
+          <cite id="quote-source"></cite>
+        </blockquote>
+      </div>
     </div>
     <div class="card-footer">
       <span class="card-source" id="source-label">Roman Catholic Calendar</span>
@@ -515,7 +556,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.3.2: fetching feed…');
+  console.info('Saint card v1.4.0: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
@@ -547,24 +588,72 @@ function todayKey() {
   return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// ── Config ────────────────────────────────────────────────────────────────────
+const LAYOUTS = ['vertical', 'horizontal'];
+
+// A bare number means percent ("40" → "40%"); a string may carry any CSS length.
+function normalizeImageWidth(v) {
+  if (v === undefined || v === null || v === '') return '40%';
+  if (typeof v === 'number') {
+    if (!isFinite(v) || v <= 0 || v >= 100) throw new Error('image_width as a number must be a percentage between 1 and 99');
+    return v + '%';
+  }
+  const s = String(v).trim();
+  if (!/^\d+(\.\d+)?(%|px|rem|em|ch|vw)$/.test(s)) {
+    throw new Error(`invalid image_width "${v}" — use e.g. 40%, 260px or 16rem`);
+  }
+  return s;
+}
+
+function normalizeConfig(config) {
+  const c = config || {};
+  const layout = String(c.layout || 'vertical').toLowerCase();
+  if (!LAYOUTS.includes(layout)) {
+    throw new Error(`invalid layout "${c.layout}" — expected one of: ${LAYOUTS.join(', ')}`);
+  }
+  return { ...c, layout, image_width: normalizeImageWidth(c.image_width) };
+}
+
 // ── Custom Element ────────────────────────────────────────────────────────────
 class SaintOfDayCard extends HTMLElement {
 
-  // No getConfigElement: the card takes no options, so HA falls back to its
-  // built-in YAML editor instead of a broken visual editor.
+  // No getConfigElement: the two options are simple enough that HA's built-in
+  // YAML editor is a better bet than a hand-rolled visual editor.
   static getStubConfig() {
-    return {};
+    return { layout: 'vertical' };
   }
 
   setConfig(config) {
-    this._config = config;
+    this._config = normalizeConfig(config);
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
     }
     this.shadowRoot.innerHTML = `<style>${CARD_CSS}</style>${CARD_HTML}`;
     this._$ = id => this.shadowRoot.getElementById(id);
-    this._loaded = false;
+    this._applyLayout();
     this._init();
+    // setConfig runs again on every config change; re-render the saint we
+    // already have so the layout updates without re-fetching the feed.
+    this._loaded = !!this._saint;
+    if (this._saint) this._render(this._saint);
+  }
+
+  _applyLayout() {
+    this.shadowRoot.querySelector('ha-card').dataset.layout = this._config.layout;
+    this.style.setProperty('--sotd-image-width', this._config.image_width);
+  }
+
+  // The illustrations are drawn on a 420×200 landscape canvas. Side by side the
+  // panel is portrait, so fill it and crop the sides (figure and name are
+  // centred); stacked, letterbox as usual so nothing is cut off. Mirrors the
+  // 430px container query in the stylesheet — an SVG attribute can't be set
+  // from CSS, so the width is checked here and again on resize.
+  _syncIllustrationFit() {
+    if (!this._$ || !this._config) return;   // resize can fire before setConfig
+    const svg = this._$('illustration').querySelector('svg');
+    if (!svg) return;
+    const sideBySide = this._config.layout === 'horizontal' && this.offsetWidth >= 430;
+    svg.setAttribute('preserveAspectRatio', sideBySide ? 'xMidYMid slice' : 'xMidYMid meet');
   }
 
   set hass(_hass) {
@@ -575,7 +664,7 @@ class SaintOfDayCard extends HTMLElement {
     }
   }
 
-  getCardSize() { return 7; }
+  getCardSize() { return this._config?.layout === 'horizontal' ? 5 : 7; }
 
   _init() {
     this._$('date').textContent = new Date().toLocaleDateString('en-US', {
@@ -637,6 +726,7 @@ class SaintOfDayCard extends HTMLElement {
   _render(s) {
     const $ = this._$;
 
+    this._saint = s;
     this._applyTheme(getLiturgicalTheme(s));
 
     ['name', 'feast', 'bio'].forEach(id => {
@@ -659,16 +749,20 @@ class SaintOfDayCard extends HTMLElement {
     }
 
     const wrap = $('illustration');
+    const drawIllustration = () => {
+      wrap.innerHTML = getIllustration(s);
+      this._syncIllustrationFit();
+    };
     if (s.imageUrl) {
       wrap.innerHTML = '';
       const img = document.createElement('img');
       img.alt = s.name;
       img.loading = 'lazy';
-      img.onerror = () => { wrap.innerHTML = getIllustration(s); };
+      img.onerror = drawIllustration;
       img.src = s.imageUrl;
       wrap.appendChild(img);
     } else {
-      wrap.innerHTML = getIllustration(s);
+      drawIllustration();
     }
     $('source-label').textContent = s.source || 'Roman Catholic Calendar';
     $('link').href = s.url || 'https://www.catholic.org/saints/';
@@ -704,11 +798,16 @@ class SaintOfDayCard extends HTMLElement {
       };
     }
     document.addEventListener('visibilitychange', this._visListener);
+    if (!this._resizeObserver && window.ResizeObserver) {
+      this._resizeObserver = new ResizeObserver(() => this._syncIllustrationFit());
+    }
+    this._resizeObserver?.observe(this);
     this._refreshIfStale();
   }
 
   disconnectedCallback() {
     if (this._visListener) document.removeEventListener('visibilitychange', this._visListener);
+    this._resizeObserver?.disconnect();
     clearTimeout(this._midnightTimer);
   }
 }
@@ -720,7 +819,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'saint-of-day-card',
   name: 'Saint of the Day',
-  description: 'Displays the Catholic saint of the day with biography, feast type, tags, a quote, and a unique illustrated artwork panel.',
+  description: 'Displays the Catholic saint of the day with biography, feast type, tags, a quote, and a unique illustrated artwork panel. Supports a stacked or side-by-side (horizontal) layout.',
   preview: true,
   documentationURL: 'https://github.com/jrdutch/saint-of-the-day-card-',
 });
