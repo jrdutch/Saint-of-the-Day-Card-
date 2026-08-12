@@ -8,6 +8,7 @@
  * Options (all optional):
  *   layout: vertical | horizontal   image above the text (default), or beside it
  *   image_width: 40%                width of the image panel in horizontal layout
+ *   stack_below: 450                stack back up when the card is narrower than this
  *
  * Data: catholic.org RSS feed (live), with a 35+ saint embedded fallback.
  */
@@ -312,7 +313,39 @@ const SAINTS = {
 };
 
 // ── Card styles ───────────────────────────────────────────────────────────────
-const CARD_CSS = `
+// Image on the left, text on the right. Applied only when the card is at least
+// `stack_below` pixels wide (see below) — narrower than that and these rules
+// simply don't apply, leaving the normal stacked layout.
+const HORIZONTAL_RULES = `
+    ha-card[data-layout="horizontal"] .card-content {
+      display: flex; align-items: stretch; min-height: 230px;
+    }
+    ha-card[data-layout="horizontal"] .card-image-wrap {
+      flex: 0 0 var(--sotd-image-width); height: auto; min-width: 0;
+    }
+    /* Taken out of flow so the panel takes its height from the text column
+       instead of dictating it. */
+    ha-card[data-layout="horizontal"] .card-image-wrap img,
+    ha-card[data-layout="horizontal"] .card-image-wrap svg {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    }
+    /* The panel is tall and narrow here, so crop toward the middle rather than
+       the top — portrait subjects sit centre-frame at this aspect ratio. */
+    ha-card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
+    /* Fade into the text column on the right edge, not the bottom */
+    ha-card[data-layout="horizontal"] .card-image-wrap::after {
+      top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
+      background: linear-gradient(to right, transparent 0%, transparent 45%,
+                  var(--ha-card-background, var(--card-background-color, #fff)) 100%);
+    }
+    ha-card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
+`;
+
+// A card's own width decides the layout, not the screen's — the same dashboard
+// gives a card in a narrow column far less room than the editor's preview pane.
+// stack_below: 0 drops the query entirely, so the layout also holds on browsers
+// too old to support container queries.
+const CARD_CSS = (cfg) => `
   :host {
     display: block;
     /* The card queries its own width so the horizontal layout can stack itself
@@ -351,35 +384,9 @@ const CARD_CSS = `
     pointer-events: none;
   }
   .card-body { padding: .9rem 1.1rem 1.1rem; }
-  /* ── Horizontal layout ──────────────────────────────────────────────────────
-     Image on the left, text on the right. Scoped to a container query so a card
-     dropped into a narrow column (or a phone) falls back to the stacked layout
-     on its own — browsers without container query support keep the stacked
-     layout too, which is the safe default. */
-  @container (min-width: 430px) {
-    ha-card[data-layout="horizontal"] .card-content {
-      display: flex; align-items: stretch; min-height: 230px;
-    }
-    ha-card[data-layout="horizontal"] .card-image-wrap {
-      flex: 0 0 var(--sotd-image-width); height: auto; min-width: 0;
-    }
-    /* Taken out of flow so the panel takes its height from the text column
-       instead of dictating it. */
-    ha-card[data-layout="horizontal"] .card-image-wrap img,
-    ha-card[data-layout="horizontal"] .card-image-wrap svg {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    }
-    /* The panel is tall and narrow here, so crop toward the middle rather than
-       the top — portrait subjects sit centre-frame at this aspect ratio. */
-    ha-card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
-    /* Fade into the text column on the right edge, not the bottom */
-    ha-card[data-layout="horizontal"] .card-image-wrap::after {
-      top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
-      background: linear-gradient(to right, transparent 0%, transparent 45%,
-                  var(--ha-card-background, var(--card-background-color, #fff)) 100%);
-    }
-    ha-card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
-  }
+  ${cfg.stack_below > 0
+      ? `@container (min-width: ${cfg.stack_below}px) {${HORIZONTAL_RULES}}`
+      : HORIZONTAL_RULES}
   .card-name { font-size: 1.3rem; color: var(--primary-text-color, #3a1f0e); line-height: 1.2; margin-bottom: .2rem; }
   .card-feast { font-size: .85rem; font-family: Georgia, serif; font-variant: small-caps; color: var(--lit-ac); letter-spacing: .14em; margin-bottom: .75rem; }
   .card-divider { display: flex; align-items: center; gap: .6rem; border: none; margin-bottom: .75rem; }
@@ -556,7 +563,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.4.0: fetching feed…');
+  console.info('Saint card v1.4.1: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {
@@ -605,13 +612,32 @@ function normalizeImageWidth(v) {
   return s;
 }
 
+// Below this card width the horizontal layout stacks back up. 450 sits just
+// above phone width (a Pixel is 412px, a large iPhone 430px), so the card
+// stacks on a phone — where two columns would squeeze the illustration into a
+// tall sliver — and stays side by side on a tablet or desktop. 0 never stacks.
+const DEFAULT_STACK_BELOW = 450;
+
+function normalizeStackBelow(v) {
+  if (v === undefined || v === null || v === '') return DEFAULT_STACK_BELOW;
+  const n = typeof v === 'number' ? v : Number(String(v).trim().replace(/px$/, ''));
+  if (!isFinite(n) || n < 0 || n > 2000) {
+    throw new Error(`invalid stack_below "${v}" — use a width in pixels, e.g. 450 (or 0 to never stack)`);
+  }
+  return n;
+}
+
 function normalizeConfig(config) {
   const c = config || {};
   const layout = String(c.layout || 'vertical').toLowerCase();
   if (!LAYOUTS.includes(layout)) {
     throw new Error(`invalid layout "${c.layout}" — expected one of: ${LAYOUTS.join(', ')}`);
   }
-  return { ...c, layout, image_width: normalizeImageWidth(c.image_width) };
+  return {
+    ...c, layout,
+    image_width: normalizeImageWidth(c.image_width),
+    stack_below: normalizeStackBelow(c.stack_below),
+  };
 }
 
 // ── Custom Element ────────────────────────────────────────────────────────────
@@ -628,7 +654,7 @@ class SaintOfDayCard extends HTMLElement {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
     }
-    this.shadowRoot.innerHTML = `<style>${CARD_CSS}</style>${CARD_HTML}`;
+    this.shadowRoot.innerHTML = `<style>${CARD_CSS(this._config)}</style>${CARD_HTML}`;
     this._$ = id => this.shadowRoot.getElementById(id);
     this._applyLayout();
     this._init();
@@ -646,14 +672,18 @@ class SaintOfDayCard extends HTMLElement {
   // The illustrations are drawn on a 420×200 landscape canvas. Side by side the
   // panel is portrait, so fill it and crop the sides (figure and name are
   // centred); stacked, letterbox as usual so nothing is cut off. Mirrors the
-  // 430px container query in the stylesheet — an SVG attribute can't be set
-  // from CSS, so the width is checked here and again on resize.
+  // stylesheet's container query — an SVG attribute can't be set from CSS, so
+  // the width is checked here and again on resize.
+  _isSideBySide() {
+    if (this._config.layout !== 'horizontal') return false;
+    return this._config.stack_below <= 0 || this.offsetWidth >= this._config.stack_below;
+  }
+
   _syncIllustrationFit() {
     if (!this._$ || !this._config) return;   // resize can fire before setConfig
     const svg = this._$('illustration').querySelector('svg');
     if (!svg) return;
-    const sideBySide = this._config.layout === 'horizontal' && this.offsetWidth >= 430;
-    svg.setAttribute('preserveAspectRatio', sideBySide ? 'xMidYMid slice' : 'xMidYMid meet');
+    svg.setAttribute('preserveAspectRatio', this._isSideBySide() ? 'xMidYMid slice' : 'xMidYMid meet');
   }
 
   set hass(_hass) {
@@ -665,6 +695,15 @@ class SaintOfDayCard extends HTMLElement {
   }
 
   getCardSize() { return this._config?.layout === 'horizontal' ? 5 : 7; }
+
+  // Sections dashboards ask the card how wide it wants to be. The horizontal
+  // layout asks for the full row — that is the whole point of it, and it keeps
+  // the card short instead of tall. Height follows the content either way.
+  getGridOptions() {
+    return this._config?.layout === 'horizontal'
+      ? { columns: 'full', rows: 'auto', min_columns: 6 }
+      : { columns: 12, rows: 'auto', min_columns: 4 };
+  }
 
   _init() {
     this._$('date').textContent = new Date().toLocaleDateString('en-US', {
