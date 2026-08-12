@@ -70,24 +70,9 @@
 
     .card-body { padding: 1rem 1.25rem 1.25rem; }
 
-    /* ── Horizontal layout (add ?layout=horizontal to the URL) ────────────────
-       Image on the left, text on the right. Below 640px the card stacks itself
-       back up so it still reads on a phone. */
     .card[data-layout="horizontal"] { max-width: 880px; }
-    @media (min-width: 640px) {
-      .card[data-layout="horizontal"] .card-content { display: flex; align-items: stretch; min-height: 240px; }
-      .card[data-layout="horizontal"] .card-image-wrap { flex: 0 0 var(--sotd-image-width, 40%); height: auto; min-width: 0; }
-      /* Out of flow so the panel takes its height from the text column */
-      .card[data-layout="horizontal"] .card-image-wrap img,
-      .card[data-layout="horizontal"] .card-image-wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-      .card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
-      /* Fade into the text column on the right edge, not the bottom */
-      .card[data-layout="horizontal"] .card-image-wrap::after {
-        top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
-        background: linear-gradient(to right, transparent 0%, transparent 45%, var(--card-bg) 100%);
-      }
-      .card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
-    }
+    /* The side-by-side rules are injected by applyLayout() below so the width
+       they kick in at can be set with ?stack_below= */
 
     .card-name { font-size: 1.4rem; color: var(--text-primary); line-height: 1.2; margin-bottom: .25rem; }
     .card-feast { font-size: .9rem; font-family: Georgia, serif; font-variant: small-caps; color: var(--lit-ac); letter-spacing: .14em; margin-bottom: .85rem; }
@@ -642,23 +627,53 @@ function parseRSS(xml) {
 // number is read as a percentage, since a literal % needs escaping in a URL.
 const PARAMS = new URLSearchParams(location.search);
 const LAYOUT = PARAMS.get('layout') === 'horizontal' ? 'horizontal' : 'vertical';
+
+// Below this width the side-by-side layout stacks back up. 450 sits just above
+// phone width, where two columns would squeeze the illustration into a tall
+// sliver. ?stack_below=0 never stacks.
+const STACK_BELOW = (() => {
+  const n = Number((PARAMS.get('stack_below') || '').trim().replace(/px$/, ''));
+  return isFinite(n) && n >= 0 && n <= 2000 && PARAMS.get('stack_below') ? n : 450;
+})();
+
+const HORIZONTAL_RULES = `
+  .card[data-layout="horizontal"] .card-content { display: flex; align-items: stretch; min-height: 240px; }
+  .card[data-layout="horizontal"] .card-image-wrap { flex: 0 0 var(--sotd-image-width, 40%); height: auto; min-width: 0; }
+  /* Out of flow so the panel takes its height from the text column */
+  .card[data-layout="horizontal"] .card-image-wrap img,
+  .card[data-layout="horizontal"] .card-image-wrap svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .card[data-layout="horizontal"] .card-image-wrap img { object-position: center 30%; }
+  /* Fade into the text column on the right edge, not the bottom */
+  .card[data-layout="horizontal"] .card-image-wrap::after {
+    top: 0; bottom: 0; right: 0; left: auto; width: 56px; height: auto;
+    background: linear-gradient(to right, transparent 0%, transparent 45%, var(--card-bg) 100%);
+  }
+  .card[data-layout="horizontal"] .card-body { flex: 1 1 auto; min-width: 0; }
+`;
+
 (function applyLayout() {
   const card = document.querySelector('.card');
   card.dataset.layout = LAYOUT;
   const w = (PARAMS.get('image_width') || '').trim();
   if (/^\d+(\.\d+)?$/.test(w)) card.style.setProperty('--sotd-image-width', w + '%');
   else if (/^\d+(\.\d+)?(%|px|rem|em)$/.test(w)) card.style.setProperty('--sotd-image-width', w);
+  if (LAYOUT !== 'horizontal') return;
+  const style = document.createElement('style');
+  style.textContent = STACK_BELOW > 0
+    ? `@media (min-width: ${STACK_BELOW}px) {${HORIZONTAL_RULES}}`
+    : HORIZONTAL_RULES;
+  document.head.appendChild(style);
 })();
 
 // The illustrations are drawn on a 420×200 landscape canvas. Side by side the
 // panel is portrait, so fill it and crop the sides (figure and name are
 // centred); stacked, letterbox as usual so nothing is cut off. Mirrors the
-// 640px media query above — an SVG attribute can't be set from CSS.
-const WIDE = window.matchMedia('(min-width: 640px)');
+// media query built above — an SVG attribute can't be set from CSS.
+const WIDE = window.matchMedia(`(min-width: ${Math.max(STACK_BELOW, 0)}px)`);
 function fitIllustration() {
   const svg = document.querySelector('#illustration svg');
   if (!svg) return;
-  const sideBySide = LAYOUT === 'horizontal' && WIDE.matches;
+  const sideBySide = LAYOUT === 'horizontal' && (STACK_BELOW <= 0 || WIDE.matches);
   svg.setAttribute('preserveAspectRatio', sideBySide ? 'xMidYMid slice' : 'xMidYMid meet');
 }
 WIDE.addEventListener('change', fitIllustration);
@@ -807,7 +822,7 @@ function parseRSS2JSON(data) {
 }
 
 async function fetchSaint() {
-  console.info('Saint card v1.4.0: fetching feed…');
+  console.info('Saint card v1.4.1: fetching feed…');
   for (const a of FEED_ATTEMPTS) {
     const host = new URL(a.url).host;
     try {

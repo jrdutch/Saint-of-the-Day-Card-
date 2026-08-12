@@ -78,7 +78,8 @@ switch to the code (YAML) editor with the three-dot menu → **Edit in YAML**.
 | Option | Values | Default | What it does |
 | --- | --- | --- | --- |
 | `layout` | `vertical`, `horizontal` | `vertical` | `horizontal` puts the image on the left and the name, tags, biography and quote on the right |
-| `image_width` | a percentage or CSS length, e.g. `40%`, `260px` | `40%` | How much of the card's width the image panel takes. Only used by the horizontal layout |
+| `image_width` | a percentage or a size in pixels, e.g. `40%`, `260px` | `40%` | How much of the card's width the image panel takes. Horizontal layout only |
+| `stack_below` | a width in pixels, or `0` | `450` | If the card ends up narrower than this, it stacks the image back on top. Horizontal layout only |
 
 Default (stacked) layout:
 
@@ -101,13 +102,37 @@ layout: horizontal
 image_width: 50%
 ```
 
-**Notes on the horizontal layout**
+### Making it span the whole dashboard
 
-- It needs room. Below about 430px wide the card stacks itself back up, so it
-  still reads on a phone — nothing to configure.
-- To give it the full width of a dashboard, put it in its own row, or in a
-  **sections** dashboard resize the card to full width (drag its handle, or add
-  `grid_options: {columns: full}` in YAML).
+The horizontal layout saves vertical space, but only if the card is actually
+wide — a card squeezed into a narrow column has no room for two panels. How you
+widen it depends on which kind of dashboard you have:
+
+- **Sections dashboard** (the current default — your cards sit in tidy groups
+  with headings): nothing to do. A card set to `layout: horizontal` asks for the
+  full width of its section automatically. If you added the card before
+  upgrading, drag the handle on its right edge out to the end of the row, or add
+  `grid_options: {columns: full}` under the card's YAML.
+- **Masonry dashboard** (the older style — cards flow into 2 or 3 columns):
+  cards cannot span across columns here, so a card is only ever as wide as one
+  column. To get a full-width card, put it on a view whose type is set to
+  **Panel (1 card)**, or reduce the view to a single column.
+
+Not sure which you have? Edit the dashboard, click the pencil next to the view
+name, and look at **View type**.
+
+### Why it sometimes stacks anyway
+
+The card decides its layout from **its own width**, not the size of your screen.
+That means a couple of things worth knowing:
+
+- **The preview in the card editor is not the same width as your dashboard.** A
+  card can look side-by-side in the preview and stack once saved, simply because
+  the real slot is narrower. Judge it after saving.
+- **On a phone it will stack**, by design — below `450` pixels the two panels
+  squeeze the picture into a tall thin sliver, which looks worse than stacking.
+  If you would rather keep it side-by-side at every size, set `stack_below: 0`.
+  To make it stack sooner, raise the number.
 
 ---
 
@@ -188,7 +213,8 @@ the right:
 Then lower the **Height** setting to about `320` — the horizontal card is much
 shorter. You can also set the width of the image panel with `&image_width=50`
 (a number is read as a percentage, because a literal `%` has to be escaped in a
-URL). On a screen narrower than 640px the card stacks itself back up.
+URL). Below 450px wide the card stacks itself back up; add `&stack_below=0` to
+keep it side-by-side at every size.
 
 ---
 
